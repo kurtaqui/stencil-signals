@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mv watch-effect.ts src/utils/watch-effect.ts)",
+      "Bash(mv computed-async.ts src/utils/computed-async.ts)",
+      "Bash(mv computed-previous.ts src/utils/computed-previous.ts)",
+      "Bash(mv index.ts src/index.ts)",
+      "Bash(mv core.test.ts tests/core.test.ts)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm test *)",
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('engines' in d\\)\")",
+      "Bash(pnpm build *)"
+    ]
+  }
+}

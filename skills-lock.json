@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "stenciljs-component-development": {
+      "source": "corlab-tech/skills",
+      "sourceType": "github",
+      "skillPath": "stenciljs-component-development/SKILL.md",
+      "computedHash": "2195842f8a9d800dcfccdc2c7b124f3f741e45b7cb5a8a9760c3858ed349be8b"
+    },
+    "vitest": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vitest/SKILL.md",
+      "computedHash": "669c7275f7e1379b06b2bcfa593603aead4c983b951c7e8edbc09640aa38d0a1"
+    }
+  }
+}

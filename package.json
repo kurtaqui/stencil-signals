@@ -1,0 +1,45 @@
+{
+  "name": "@kurtaqui/stencil-signals",
+  "version": "0.1.0",
+  "description": "TC39 Signals integration for StencilJS",
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kurtaqui/stencil-signals.git"
+  },
+  "homepage": "https://github.com/kurtaqui/stencil-signals#readme",
+  "bugs": "https://github.com/kurtaqui/stencil-signals/issues",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "demo": "vite demo --open",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "signal-polyfill": "^0.2.0"
+  },
+  "peerDependencies": {
+    "@stencil/core": ">=4.43.0"
+  },
+  "devDependencies": {
+    "@stencil/core": ">=4.43.0",
+    "typescript": "^6.0.0",
+    "vite": "^8.0.0",
+    "vitest": "^4.1.5"
+  }
+}
