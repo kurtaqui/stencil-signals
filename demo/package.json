@@ -1,0 +1,7 @@
+{
+  "name": "@kurtaqui/stencil-signals-demo",
+  "private": true,
+  "dependencies": {
+    "@kurtaqui/stencil-signals": "workspace:*"
+  }
+}

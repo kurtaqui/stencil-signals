@@ -1,0 +1,67 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# Local environment overrides — never commit
+.env.local
+.env.*.local
+
+# compiled output
+dist
+tmp
+/out-tsc
+
+# Module Federation generated artifacts (per-MFE local cache)
+**/.mf
+**/.federation
+**/.__mf__temp
+
+# Stray TypeScript declaration outputs in source folders.
+# These should never be committed — `.d.ts` files belong in `dist/` only.
+# (Real hand-authored ambient declarations should live in `*.d.ts` files
+# under a clearly-named folder e.g. `types/` or `global.d.ts` at app root.)
+libs/*/src/**/*.d.ts
+libs/*/src/**/*.d.ts.map
+libs/*/src/**/*.js.map
+
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/mcp.json
+.history/*
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+
+# System Files
+.DS_Store
+Thumbs.db
+
+.nx/cache
+.nx/workspace-data
+
+.angular
+
+# Stencil demo build artifacts
+demo/stencil-dist/
+demo/.stencil/
