@@ -3,58 +3,31 @@
  *
  * Two signatures, one function:
  *
- * ─── Auto-tracking (original behaviour) ──────────────────────────────────────
+ * ─── Auto-tracking ────────────────────────────────────────────────────────────
  *
  *   watchEffect(fn)
  *
  * Runs `fn` immediately, tracks every signal `.get()` called inside it, and
  * re-runs `fn` whenever any of those signals change.
  *
- * ```ts
- * connectedCallback() {
- *   this._cleanup = watchEffect(() => {
- *     console.log('count is now', count.get());
- *   });
- * }
- * disconnectedCallback() { this._cleanup?.(); }
- * ```
- *
- * ─── Explicit deps (new) ──────────────────────────────────────────────────────
+ * ─── Explicit deps ────────────────────────────────────────────────────────────
  *
  *   watchEffect(deps, fn, options?)
  *
  * Only re-runs when the signals listed in `deps` change. The callback receives
- * their current values as typed arguments — no `.get()` required inside `fn`.
- * Signal reads *inside* `fn` that are NOT in `deps` are untracked.
- *
- * This mirrors ngxtension's `explicitEffect` and React's `useEffect` with a
- * dependency array, giving you precise control over what triggers the effect.
- *
- * ```ts
- * const a = signal(1);
- * const b = signal('hello');
- *
- * connectedCallback() {
- *   this._cleanup = watchEffect([a, b], ([aVal, bVal]) => {
- *     console.log(aVal, bVal);
- *   });
- * }
- * ```
+ * their current values as typed arguments. Signal reads *inside* `fn` that
+ * are NOT in `deps` are untracked.
  *
  * Options:
- *   `defer: true` — skip the initial synchronous run; only execute on first change.
+ *   `defer: true` — skip the initial synchronous run; only fire on first change.
  *
- * ```ts
- * watchEffect([userId], ([id]) => fetchUser(id), { defer: true });
- * ```
- *
- * In both modes `fn` may return a cleanup function that is called before each
- * re-run and on final disposal.
+ * In both modes `fn` may return a cleanup function called before each re-run
+ * and on final disposal.
  */
 
-import { Signal } from 'signal-polyfill';
+import { getAdapter } from '../adapters/active';
 import { scheduler } from '../signals/core';
-import type { SignalState, SignalComputed } from '../signals/core';
+import type { SignalState, SignalComputed } from '../adapters/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,7 +35,6 @@ export type CleanupFn = () => void;
 
 type AnySignal<T = unknown> = SignalState<T> | SignalComputed<T>;
 
-/** Infer the tuple of value types from a tuple of signals. */
 type SignalValues<T extends readonly AnySignal[]> = {
   [K in keyof T]: T[K] extends AnySignal<infer V> ? V : never;
 };
@@ -70,8 +42,7 @@ type SignalValues<T extends readonly AnySignal[]> = {
 export interface WatchEffectOptions {
   /**
    * When `true`, the effect does NOT run immediately on creation.
-   * It only runs the first time one of the deps signals changes.
-   * Only applicable in explicit-deps mode.
+   * Only fires on first dep change. Applicable to explicit-deps mode only.
    */
   defer?: boolean;
 }
@@ -102,53 +73,12 @@ export function watchEffect(
 }
 
 // ─── Auto-tracking implementation ─────────────────────────────────────────────
+//
+// Delegates to the adapter's createEffect() which handles dep tracking
+// internally for both TC39 (Signal.Computed + Watcher) and Preact (effect()).
 
 function autoTrackingEffect(fn: () => void | CleanupFn): CleanupFn {
-  let userCleanup: CleanupFn | undefined;
-  let disposed = false;
-
-  // Wrap fn in a Computed so every signal.get() inside fn is tracked as a dep.
-  // We capture the return value (optional cleanup) via a closure variable rather
-  // than the Computed's return type to keep types simple.
-  let capturedCleanup: CleanupFn | undefined;
-  const tracker = new Signal.Computed<null>(() => {
-    const ret = fn();
-    capturedCleanup = typeof ret === 'function' ? ret : undefined;
-    return null;
-  });
-
-  // In the notify callback we MUST NOT call watcher.watch() — it triggers
-  // producerAccessed() which throws during inNotificationPhase.
-  // Just schedule the re-run; the watcher will re-arm itself in run().
-  const watcher = new Signal.subtle.Watcher(() => {
-    if (disposed) return;
-    scheduler.schedule(run);
-  });
-
-  function run() {
-    if (disposed) return;
-    // Call previous cleanup before re-running
-    userCleanup?.();
-    userCleanup = undefined;
-    // Unwatch → re-evaluate (collects fresh deps) → re-watch
-    watcher.unwatch(tracker);
-    capturedCleanup = undefined;
-    tracker.get();                         // runs fn(), tracks deps
-    userCleanup = capturedCleanup;
-    watcher.watch(tracker);               // arm watcher on the Computed
-  }
-
-  // Initial run: evaluate once, arm watcher.
-  capturedCleanup = undefined;
-  tracker.get();
-  userCleanup = capturedCleanup;
-  watcher.watch(tracker);
-
-  return () => {
-    disposed = true;
-    userCleanup?.();
-    try { watcher.unwatch(tracker); } catch { /* ok */ }
-  };
+  return getAdapter().createEffect(fn as () => void | (() => void));
 }
 
 // ─── Explicit-deps implementation ─────────────────────────────────────────────
@@ -162,16 +92,13 @@ function explicitDepsEffect(
   let registeredCleanup: CleanupFn | undefined;
   let disposed = false;
 
-  // onCleanup() lets users register a teardown inside the fn body itself
-  // (alternative to returning a cleanup function).
   function onCleanup(cb: CleanupFn) {
     registeredCleanup = cb;
   }
 
   function readDeps(): unknown[] {
-    // Read all dep values inside untrack so we don't accidentally subscribe
-    // the watcher to signals called elsewhere.
-    return Signal.subtle.untrack(() => deps.map(d => d.get()));
+    // Read dep values without creating tracking subscriptions.
+    return getAdapter().untrack(() => deps.map(d => d.get()));
   }
 
   function runCleanups() {
@@ -179,29 +106,30 @@ function explicitDepsEffect(
     if (typeof registeredCleanup === 'function') { registeredCleanup(); registeredCleanup = undefined; }
   }
 
+  // Watcher is created before run() so the closure captures it.
+  // Do NOT call watcher.watch() inside the notify callback.
+  const watcher = getAdapter().createWatcher(() => {
+    if (disposed) return;
+    scheduler.schedule(run);
+  });
+
   function run() {
     if (disposed) return;
     runCleanups();
     const values = readDeps();
     userCleanup = fn(values, onCleanup) as void | CleanupFn;
-    // Re-arm all dep watchers
+    // Re-arm all dep watchers (safe here — we are in a microtask, not in notify).
     for (const dep of deps) {
-      try { watcher.watch(dep as any); } catch {}
+      try { watcher.watch(dep); } catch { /* ok */ }
     }
   }
 
-  // Do NOT call watcher.watch() here — triggers producerAccessed during notify phase.
-  const watcher = new Signal.subtle.Watcher(() => {
-    if (disposed) return;
-    scheduler.schedule(run);
-  });
-
-  // Arm watchers on each dep
+  // Arm watcher on each dep.
   for (const dep of deps) {
-    watcher.watch(dep as any);
+    watcher.watch(dep);
   }
 
-  // Initial run (unless deferred)
+  // Initial run (unless deferred).
   if (!options.defer) {
     const values = readDeps();
     userCleanup = fn(values, onCleanup) as void | CleanupFn;
@@ -210,8 +138,6 @@ function explicitDepsEffect(
   return () => {
     disposed = true;
     runCleanups();
-    for (const dep of deps) {
-      try { watcher.unwatch(dep as any); } catch {}
-    }
+    watcher.dispose();
   };
 }

@@ -1,9 +1,9 @@
 /**
- * @kurtaqui/stencil-signals — TC39 entry point
+ * @kurtaqui/stencil-signals/preact — Preact entry point
  *
- * Import from "@kurtaqui/stencil-signals" to use the TC39 signals polyfill
- * (signal-polyfill) as the backend. All primitives share the same `.get()`
- * / `.set()` / `.peek()` API regardless of backend.
+ * Import from "@kurtaqui/stencil-signals/preact" to use @preact/signals-core
+ * as the backend. All primitives share the same `.get()` / `.set()` / `.peek()`
+ * API as the TC39 entry point — only the import path changes.
  *
  * Public API surface:
  *
@@ -11,8 +11,7 @@
  *  ──────────
  *  signal(value)              Create a writable SignalState
  *  computed(fn)               Create a read-only SignalComputed
- *  batch(fn)                  No-op on TC39 (microtask scheduler coalesces)
- *  Signal                     The raw TC39 Signal namespace (for advanced use)
+ *  batch(fn)                  Batch multiple signal writes (native Preact feature)
  *
  *  Component integration
  *  ─────────────────────
@@ -34,14 +33,11 @@
  *  createStore(init)           Wraps a plain object in signals; returns a reactive Proxy
  */
 
-// ─── Activate TC39 adapter ────────────────────────────────────────────────────
+// ─── Activate Preact adapter ─────────────────────────────────────────────────
 // Must be the very first side-effect so all utilities see the adapter.
 import { _setAdapter } from './adapters/active';
-import { tc39Adapter } from './adapters/tc39';
-_setAdapter(tc39Adapter);
-
-// ─── TC39-specific raw namespace ─────────────────────────────────────────────
-export { Signal } from 'signal-polyfill';
+import { preactAdapter } from './adapters/preact';
+_setAdapter(preactAdapter);
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 export {
@@ -62,8 +58,8 @@ export type {
 } from './adapters/types';
 
 // ─── Component integration ────────────────────────────────────────────────────
-export { SignalWatcher } from './mixins/signal-watcher-tc39';
-export type { SignalWatcherApi } from './mixins/signal-watcher-tc39';
+export { SignalWatcher } from './mixins/signal-watcher-preact';
+export type { SignalWatcherApi } from './mixins/signal-watcher-preact';
 
 // ─── Decorators ───────────────────────────────────────────────────────────────
 export { useSignal } from './directives/use-signal';
