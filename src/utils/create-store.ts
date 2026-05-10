@@ -58,10 +58,7 @@ export type Store<
 export function createStore<
   T extends object,
   C extends Record<string, SignalComputed<unknown>> = Record<never, never>,
->(
-  initialState: T,
-  computedFactory?: (state: T) => C,
-): Store<T, C> {
+>(initialState: T, computedFactory?: (state: T) => C): Store<T, C> {
   // Snapshot initial values for $reset().
   const initial = { ...initialState } as T;
 
@@ -112,14 +109,12 @@ export function createStore<
       }
 
       if (computedSignals && prop in computedSignals) {
-        throw new TypeError(
-          `createStore: cannot write to computed property "${propStr}".`,
-        );
+        throw new TypeError(`createStore: cannot write to computed property "${propStr}".`);
       }
 
       throw new TypeError(
         `createStore: cannot set unknown property "${propStr}". ` +
-        `Only keys present in initialState are writable.`,
+          `Only keys present in initialState are writable.`,
       );
     },
 

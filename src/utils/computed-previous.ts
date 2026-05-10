@@ -78,7 +78,11 @@ export function computedPrevious<T>(
         lastSeen = current;
       }
       // Re-arm for the next change
-      try { watcher.watch(source as any); } catch { /* disposed */ }
+      try {
+        watcher.watch(source as any);
+      } catch {
+        /* disposed */
+      }
     });
   });
 

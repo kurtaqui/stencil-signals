@@ -16,16 +16,16 @@ StencilJS is already reactive via `@State()` and `@Prop()` — but that reactivi
 
 TC39 Signals are **pull-based and global** by nature: any component that reads a signal during render automatically subscribes to it. This makes cross-component state trivially simple.
 
-| Feature | `@State()` | `@kurtaqui/stencil-signals` |
-|---|---|---|
-| Triggers re-render | ✅ | ✅ |
-| Shared across components | ❌ | ✅ |
-| Computed/derived values | ❌ | ✅ |
-| Side effects (auto-tracking) | ❌ | ✅ `watchEffect(fn)` |
-| Side effects (explicit deps) | ❌ | ✅ `watchEffect(deps, fn)` |
-| Async derived state | ❌ | ✅ `computedAsync` |
-| Previous value tracking | ❌ | ✅ `computedPrevious` |
-| Standard (TC39) | ❌ | ✅ |
+| Feature                      | `@State()` | `@kurtaqui/stencil-signals` |
+| ---------------------------- | ---------- | --------------------------- |
+| Triggers re-render           | ✅         | ✅                          |
+| Shared across components     | ❌         | ✅                          |
+| Computed/derived values      | ❌         | ✅                          |
+| Side effects (auto-tracking) | ❌         | ✅ `watchEffect(fn)`        |
+| Side effects (explicit deps) | ❌         | ✅ `watchEffect(deps, fn)`  |
+| Async derived state          | ❌         | ✅ `computedAsync`          |
+| Previous value tracking      | ❌         | ✅ `computedPrevious`       |
+| Standard (TC39)              | ❌         | ✅                          |
 
 ---
 
@@ -35,7 +35,7 @@ TC39 Signals are **pull-based and global** by nature: any component that reads a
 // signals.ts — define shared state once
 import { signal, computed } from '@kurtaqui/stencil-signals';
 
-export const count   = signal(0);
+export const count = signal(0);
 export const doubled = computed(() => count.get() * 2);
 ```
 
@@ -47,7 +47,7 @@ import { count, doubled } from './signals';
 
 @Component({ tag: 'my-counter', shadow: true })
 export class MyCounter extends SignalWatcher(class {}) {
-  @useSignal(count) count!: number;   // this.count ↔ count signal
+  @useSignal(count) count!: number; // this.count ↔ count signal
 
   render() {
     return (
@@ -71,15 +71,15 @@ Creates a writable `Signal.State<T>`.
 
 ```ts
 const name = signal('world');
-name.get();        // 'world'
+name.get(); // 'world'
 name.set('Alice');
-name.get();        // 'Alice'
+name.get(); // 'Alice'
 ```
 
 **Options:**
 
-| Option | Type | Description |
-|---|---|---|
+| Option   | Type                | Description                                          |
+| -------- | ------------------- | ---------------------------------------------------- |
 | `equals` | `(a, b) => boolean` | Custom equality. Return `true` to skip notification. |
 
 ---
@@ -89,8 +89,8 @@ name.get();        // 'Alice'
 Creates a read-only derived `Signal.Computed<T>`. Lazily recomputes when any accessed signal changes.
 
 ```ts
-const count    = signal(5);
-const squared  = computed(() => count.get() ** 2);
+const count = signal(5);
+const squared = computed(() => count.get() ** 2);
 squared.get(); // 25
 ```
 
@@ -156,6 +156,7 @@ export function LoggingMixin<TBase extends MixedInCtor>(Base: TBase) {
 ```
 
 **How re-rendering works:**
+
 - `connectedCallback` — marks the component as connected
 - `disconnectedCallback` — disposes the watcher (no memory leaks)
 - `render()` — wraps `super.render()` in a `Signal.Computed` to collect deps, arms a `Signal.subtle.Watcher` on those deps; rebuilt fresh each render so conditional branches are always correct
@@ -209,7 +210,7 @@ If `fn` returns a function, that function is called as cleanup before the next r
 
 ### `watchEffect(deps, fn, options?): CleanupFn` — explicit deps
 
-Only re-runs when the signals listed in `deps` change. The callback receives their current values as a typed tuple — no `.get()` calls needed inside `fn`. Signal reads *inside* `fn` that are not in `deps` are untracked, giving you precise control over what triggers the effect.
+Only re-runs when the signals listed in `deps` change. The callback receives their current values as a typed tuple — no `.get()` calls needed inside `fn`. Signal reads _inside_ `fn` that are not in `deps` are untracked, giving you precise control over what triggers the effect.
 
 Mirrors ngxtension's `explicitEffect` and React's `useEffect` dependency array.
 
@@ -240,8 +241,8 @@ watchEffect([userId], ([id], onCleanup) => {
 
 **Options:**
 
-| Option | Type | Default | Description |
-|---|---|---|---|
+| Option  | Type      | Default | Description                                        |
+| ------- | --------- | ------- | -------------------------------------------------- |
 | `defer` | `boolean` | `false` | Skip the initial run; only execute on first change |
 
 ```ts
@@ -251,23 +252,23 @@ watchEffect([userId], ([id]) => fetchUser(id), { defer: true });
 
 **Choosing between the two signatures:**
 
-| | Auto-tracking | Explicit deps |
-|---|---|---|
-| Dep declaration | Implicit (any `.get()` inside fn) | Explicit array |
-| Risk of unexpected re-runs | Higher | None |
-| Values passed to fn | No — use `.get()` manually | Yes, typed tuple |
-| Best for | Simple reactive side-effects | Precise control, async work |
+|                            | Auto-tracking                     | Explicit deps               |
+| -------------------------- | --------------------------------- | --------------------------- |
+| Dep declaration            | Implicit (any `.get()` inside fn) | Explicit array              |
+| Risk of unexpected re-runs | Higher                            | None                        |
+| Values passed to fn        | No — use `.get()` manually        | Yes, typed tuple            |
+| Best for                   | Simple reactive side-effects      | Precise control, async work |
 
 ---
 
 ### `computedPrevious<T>(source, initialValue?)`
 
-Returns a read-only signal that always holds the *previous* value of `source` — the value it held before the most recent change.
+Returns a read-only signal that always holds the _previous_ value of `source` — the value it held before the most recent change.
 
 Before any change has occurred the value is `undefined`, or the `initialValue` you supply.
 
 ```ts
-const count     = signal(0);
+const count = signal(0);
 const prevCount = computedPrevious(count);
 
 prevCount.get(); // undefined  (no change yet)
@@ -338,10 +339,7 @@ render() {
 **With an initial value** — avoid a blank loading state on first render:
 
 ```ts
-const posts = computedAsync(
-  async (sig) => fetchPosts(sig),
-  { initialValue: [] as Post[] },
-);
+const posts = computedAsync(async (sig) => fetchPosts(sig), { initialValue: [] as Post[] });
 // posts.get().value is [] immediately while pending
 ```
 
@@ -350,7 +348,7 @@ const posts = computedAsync(
 ```ts
 const result = computedAsync((sig) => {
   if (cache.has(id.get())) return cache.get(id.get())!;
-  return fetch(`/api/${id.get()}`).then(r => r.json());
+  return fetch(`/api/${id.get()}`).then((r) => r.json());
 });
 ```
 
@@ -360,16 +358,16 @@ const result = computedAsync((sig) => {
 import { isPending, isResolved, isError } from '@kurtaqui/stencil-signals';
 
 const r = userResult.get();
-if (isResolved(r)) console.log(r.value);  // typed as T
-if (isError(r))    console.error(r.error);
+if (isResolved(r)) console.log(r.value); // typed as T
+if (isError(r)) console.error(r.error);
 ```
 
 **Options:**
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `initialValue` | `T` | `undefined` | `result.value` before first resolution |
-| `equal` | `(a, b) => boolean` | `Object.is` | Skip update if resolved value is unchanged |
+| Option         | Type                | Default     | Description                                |
+| -------------- | ------------------- | ----------- | ------------------------------------------ |
+| `initialValue` | `T`                 | `undefined` | `result.value` before first resolution     |
+| `equal`        | `(a, b) => boolean` | `Object.is` | Skip update if resolved value is unchanged |
 
 **Cleanup** — call `.dispose()` in `disconnectedCallback()` to cancel any in-flight request and stop watching deps:
 
@@ -409,10 +407,10 @@ appStore.isLoggedIn; // computed
 
 **Special methods on the store:**
 
-| Method | Description |
-|---|---|
+| Method               | Description                                            |
+| -------------------- | ------------------------------------------------------ |
 | `store.$signal(key)` | Returns the raw `Signal.State` for a key (for interop) |
-| `store.$reset()` | Resets all state keys to their initial values |
+| `store.$reset()`     | Resets all state keys to their initial values          |
 
 ---
 
@@ -430,19 +428,19 @@ const watcher = new Signal.subtle.Watcher(() => { ... });
 
 ## Comparison to `@lit-labs/signals` and ngxtension
 
-| Feature | `@lit-labs/signals` | ngxtension | `@kurtaqui/stencil-signals` |
-|---|---|---|---|
-| `SignalWatcher` mixin | ✅ | ✅ | ✅ |
-| Stencil `Mixin()` compatible | n/a | n/a | ✅ same export, both patterns |
-| Property decorator | ❌ | ❌ | ✅ `@useSignal` |
-| Auto-tracking effect | Planned | ✅ `effect()` | ✅ `watchEffect(fn)` |
-| Explicit-deps effect | ❌ | ✅ `explicitEffect` | ✅ `watchEffect(deps, fn)` |
-| Async derived signal | ❌ | ✅ `computedAsync` | ✅ `computedAsync` |
-| Previous value | ❌ | ✅ `computedPrevious` | ✅ `computedPrevious` |
-| Structured store | ❌ | ❌ | ✅ `createStore` |
-| Template directive | ✅ `watch()` | — | — (Stencil uses JSX) |
-| TC39 polyfill | ✅ | ✅ | ✅ |
-| Framework | Lit | Angular | StencilJS |
+| Feature                      | `@lit-labs/signals` | ngxtension            | `@kurtaqui/stencil-signals`   |
+| ---------------------------- | ------------------- | --------------------- | ----------------------------- |
+| `SignalWatcher` mixin        | ✅                  | ✅                    | ✅                            |
+| Stencil `Mixin()` compatible | n/a                 | n/a                   | ✅ same export, both patterns |
+| Property decorator           | ❌                  | ❌                    | ✅ `@useSignal`               |
+| Auto-tracking effect         | Planned             | ✅ `effect()`         | ✅ `watchEffect(fn)`          |
+| Explicit-deps effect         | ❌                  | ✅ `explicitEffect`   | ✅ `watchEffect(deps, fn)`    |
+| Async derived signal         | ❌                  | ✅ `computedAsync`    | ✅ `computedAsync`            |
+| Previous value               | ❌                  | ✅ `computedPrevious` | ✅ `computedPrevious`         |
+| Structured store             | ❌                  | ❌                    | ✅ `createStore`              |
+| Template directive           | ✅ `watch()`        | —                     | — (Stencil uses JSX)          |
+| TC39 polyfill                | ✅                  | ✅                    | ✅                            |
+| Framework                    | Lit                 | Angular               | StencilJS                     |
 
 ---
 

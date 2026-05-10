@@ -32,14 +32,7 @@
  */
 
 // Primitives
-export {
-  Signal,
-  signal,
-  computed,
-  scheduler,
-  createWatcher,
-  collectSignals,
-} from './signals/core';
+export { Signal, signal, computed, scheduler, createWatcher, collectSignals } from './signals/core';
 
 export type { SignalState, SignalComputed, SignalOptions, ComputedOptions } from './signals/core';
 

@@ -133,9 +133,9 @@ function autoTrackingEffect(fn: () => void | CleanupFn): CleanupFn {
     // Unwatch → re-evaluate (collects fresh deps) → re-watch
     watcher.unwatch(tracker);
     capturedCleanup = undefined;
-    tracker.get();                         // runs fn(), tracks deps
+    tracker.get(); // runs fn(), tracks deps
     userCleanup = capturedCleanup;
-    watcher.watch(tracker);               // arm watcher on the Computed
+    watcher.watch(tracker); // arm watcher on the Computed
   }
 
   // Initial run: evaluate once, arm watcher.
@@ -147,7 +147,11 @@ function autoTrackingEffect(fn: () => void | CleanupFn): CleanupFn {
   return () => {
     disposed = true;
     userCleanup?.();
-    try { watcher.unwatch(tracker); } catch { /* ok */ }
+    try {
+      watcher.unwatch(tracker);
+    } catch {
+      /* ok */
+    }
   };
 }
 
@@ -171,12 +175,18 @@ function explicitDepsEffect(
   function readDeps(): unknown[] {
     // Read all dep values inside untrack so we don't accidentally subscribe
     // the watcher to signals called elsewhere.
-    return Signal.subtle.untrack(() => deps.map(d => d.get()));
+    return Signal.subtle.untrack(() => deps.map((d) => d.get()));
   }
 
   function runCleanups() {
-    if (typeof userCleanup === 'function') { userCleanup(); userCleanup = undefined; }
-    if (typeof registeredCleanup === 'function') { registeredCleanup(); registeredCleanup = undefined; }
+    if (typeof userCleanup === 'function') {
+      userCleanup();
+      userCleanup = undefined;
+    }
+    if (typeof registeredCleanup === 'function') {
+      registeredCleanup();
+      registeredCleanup = undefined;
+    }
   }
 
   function run() {
@@ -186,7 +196,9 @@ function explicitDepsEffect(
     userCleanup = fn(values, onCleanup) as void | CleanupFn;
     // Re-arm all dep watchers
     for (const dep of deps) {
-      try { watcher.watch(dep as any); } catch {}
+      try {
+        watcher.watch(dep as any);
+      } catch {}
     }
   }
 
@@ -211,7 +223,9 @@ function explicitDepsEffect(
     disposed = true;
     runCleanups();
     for (const dep of deps) {
-      try { watcher.unwatch(dep as any); } catch {}
+      try {
+        watcher.unwatch(dep as any);
+      } catch {}
     }
   };
 }
