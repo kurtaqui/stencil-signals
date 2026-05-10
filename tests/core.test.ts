@@ -21,8 +21,8 @@ import { computedPrevious } from '../src/utils/computed-previous';
 import { computedAsync, isPending, isResolved, isError } from '../src/utils/computed-async';
 
 // Helper: flush all pending microtasks
-const flush = () => new Promise<void>(r => setTimeout(r, 0));
-const tick  = () => new Promise<void>(r => queueMicrotask(r));
+const flush = () => new Promise<void>((r) => setTimeout(r, 0));
+const tick = () => new Promise<void>((r) => queueMicrotask(r));
 
 // ─── signal() ────────────────────────────────────────────────────────────────
 
@@ -161,10 +161,9 @@ describe('createStore()', () => {
   });
 
   it('supports computed properties', () => {
-    const store = createStore(
-      { price: 10, qty: 3 },
-      (s) => ({ total: computed(() => s.price * s.qty) }),
-    );
+    const store = createStore({ price: 10, qty: 3 }, (s) => ({
+      total: computed(() => s.price * s.qty),
+    }));
     expect(store.total).toBe(30);
     store.price = 20;
     expect(store.total).toBe(60);
@@ -172,7 +171,9 @@ describe('createStore()', () => {
 
   it('throws on write to unknown key', () => {
     const store = createStore({ a: 1 });
-    expect(() => { (store as any).unknown = 2; }).toThrow();
+    expect(() => {
+      (store as any).unknown = 2;
+    }).toThrow();
   });
 });
 
@@ -188,11 +189,14 @@ describe('watchEffect() — auto-tracking', () => {
 
   it('re-runs when accessed signal changes', async () => {
     const s = signal('a');
-    const fn = vi.fn(() => { s.get(); });
+    const fn = vi.fn(() => {
+      s.get();
+    });
     const cleanup = watchEffect(fn);
     expect(fn).toHaveBeenCalledTimes(1);
     s.set('b');
-    await tick(); await tick();
+    await tick();
+    await tick();
     cleanup();
     expect(fn.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
@@ -205,19 +209,23 @@ describe('watchEffect() — auto-tracking', () => {
       return innerCleanup;
     });
     s.set(1);
-    await tick(); await tick();
+    await tick();
+    await tick();
     cleanup();
     expect(innerCleanup).toHaveBeenCalled();
   });
 
   it('does not re-run after cleanup is called', async () => {
     const s = signal(0);
-    const fn = vi.fn(() => { s.get(); });
+    const fn = vi.fn(() => {
+      s.get();
+    });
     const cleanup = watchEffect(fn);
     cleanup();
     const callsBefore = fn.mock.calls.length;
     s.set(99);
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(fn.mock.calls.length).toBe(callsBefore);
   });
 
@@ -225,21 +233,26 @@ describe('watchEffect() — auto-tracking', () => {
     const toggle = signal(false);
     const a = signal(1);
     const b = signal(10);
-    const fn = vi.fn(() => { toggle.get() ? b.get() : a.get(); });
+    const fn = vi.fn(() => {
+      toggle.get() ? b.get() : a.get();
+    });
     const cleanup = watchEffect(fn);
 
     // Currently tracking `toggle` and `a`
     a.set(2);
-    await tick(); await tick();
+    await tick();
+    await tick();
     const callsAfterA = fn.mock.calls.length;
 
     // Switch to track `b`
     toggle.set(true);
-    await tick(); await tick();
+    await tick();
+    await tick();
 
     // Now `b` changes should trigger
     b.set(20);
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(fn.mock.calls.length).toBeGreaterThan(callsAfterA + 1);
     cleanup();
   });
@@ -263,14 +276,15 @@ describe('watchEffect() — explicit deps', () => {
     const fn = vi.fn();
     const cleanup = watchEffect([s], fn);
     s.set(5);
-    await tick(); await tick();
+    await tick();
+    await tick();
     cleanup();
     expect(fn.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(fn.mock.calls[1][0]).toEqual([5]);
   });
 
   it('does NOT re-run for signals read inside fn but not in deps', async () => {
-    const dep   = signal(0);   // in deps list
+    const dep = signal(0); // in deps list
     const other = signal(100); // NOT in deps list, but read inside fn
     const fn = vi.fn(([d]: number[]) => {
       // deliberately read `other` — should NOT cause re-run
@@ -280,11 +294,13 @@ describe('watchEffect() — explicit deps', () => {
     const callsBefore = fn.mock.calls.length;
 
     other.set(999); // change signal NOT in deps
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(fn.mock.calls.length).toBe(callsBefore); // no extra run
 
     dep.set(1); // change dep — should trigger
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(fn.mock.calls.length).toBeGreaterThan(callsBefore);
     cleanup();
   });
@@ -295,7 +311,8 @@ describe('watchEffect() — explicit deps', () => {
     const cleanup = watchEffect([s], fn, { defer: true });
     expect(fn).not.toHaveBeenCalled(); // should NOT run immediately
     s.set(1);
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(fn).toHaveBeenCalledOnce();
     cleanup();
   });
@@ -305,7 +322,8 @@ describe('watchEffect() — explicit deps', () => {
     const innerCleanup = vi.fn();
     const cleanup = watchEffect([s], () => innerCleanup);
     s.set(1);
-    await tick(); await tick();
+    await tick();
+    await tick();
     cleanup();
     expect(innerCleanup).toHaveBeenCalled();
   });
@@ -317,7 +335,8 @@ describe('watchEffect() — explicit deps', () => {
       onCleanup(registered);
     });
     s.set(1);
-    await tick(); await tick();
+    await tick();
+    await tick();
     cleanup();
     expect(registered).toHaveBeenCalled();
   });
@@ -329,7 +348,8 @@ describe('watchEffect() — explicit deps', () => {
     cleanup();
     const countBefore = fn.mock.calls.length;
     s.set(99);
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(fn.mock.calls.length).toBe(countBefore);
   });
 
@@ -340,7 +360,8 @@ describe('watchEffect() — explicit deps', () => {
     const fn = vi.fn();
     const cleanup = watchEffect([a, b, c], fn);
     b.set(20);
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(fn.mock.calls[fn.mock.calls.length - 1][0]).toEqual([1, 20, 3]);
     cleanup();
   });
@@ -365,7 +386,8 @@ describe('computedPrevious()', () => {
     const s = signal(0);
     const prev = computedPrevious(s);
     s.set(5);
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(prev.get()).toBe(0);
   });
 
@@ -374,15 +396,18 @@ describe('computedPrevious()', () => {
     const prev = computedPrevious(s);
 
     s.set('b');
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(prev.get()).toBe('a');
 
     s.set('c');
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(prev.get()).toBe('b');
 
     s.set('d');
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(prev.get()).toBe('c');
   });
 
@@ -395,8 +420,9 @@ describe('computedPrevious()', () => {
     doubled.get();
 
     n.set(3); // doubled → 6
-    await tick(); await tick();
-    expect(prev => prev).toBeDefined();
+    await tick();
+    await tick();
+    expect((prev) => prev).toBeDefined();
     // prevDoubled should have held 2 before changing to 6
     const val = prevDoubled.get();
     expect(val === 2 || val === undefined).toBe(true);
@@ -406,7 +432,8 @@ describe('computedPrevious()', () => {
     const s = signal(7);
     const prev = computedPrevious(s);
     s.set(7); // same value — TC39 signals won't notify
-    await tick(); await tick();
+    await tick();
+    await tick();
     expect(prev.get()).toBeUndefined(); // never changed
   });
 });
@@ -440,7 +467,9 @@ describe('computedAsync()', () => {
     const result = computedAsync(async (abortSignal) => {
       const current = id.get();
       if (current === 1) return 100;
-      return new Promise<number>(r => { resolveNext = r; });
+      return new Promise<number>((r) => {
+        resolveNext = r;
+      });
     });
 
     await flush();

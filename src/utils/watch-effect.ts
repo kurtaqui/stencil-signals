@@ -98,12 +98,18 @@ function explicitDepsEffect(
 
   function readDeps(): unknown[] {
     // Read dep values without creating tracking subscriptions.
-    return getAdapter().untrack(() => deps.map(d => d.get()));
+    return getAdapter().untrack(() => deps.map((d) => d.get()));
   }
 
   function runCleanups() {
-    if (typeof userCleanup === 'function') { userCleanup(); userCleanup = undefined; }
-    if (typeof registeredCleanup === 'function') { registeredCleanup(); registeredCleanup = undefined; }
+    if (typeof userCleanup === 'function') {
+      userCleanup();
+      userCleanup = undefined;
+    }
+    if (typeof registeredCleanup === 'function') {
+      registeredCleanup();
+      registeredCleanup = undefined;
+    }
   }
 
   // Watcher is created before run() so the closure captures it.
@@ -120,7 +126,11 @@ function explicitDepsEffect(
     userCleanup = fn(values, onCleanup) as void | CleanupFn;
     // Re-arm all dep watchers (safe here — we are in a microtask, not in notify).
     for (const dep of deps) {
-      try { watcher.watch(dep); } catch { /* ok */ }
+      try {
+        watcher.watch(dep);
+      } catch {
+        /* ok */
+      }
     }
   }
 

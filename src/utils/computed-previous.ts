@@ -78,7 +78,11 @@ export function computedPrevious<T>(
         lastSeen = current;
       }
       // Re-arm for the next change (safe here — outside notification phase).
-      try { watcher.watch(source); } catch { /* already disposed */ }
+      try {
+        watcher.watch(source);
+      } catch {
+        /* already disposed */
+      }
     });
   });
 

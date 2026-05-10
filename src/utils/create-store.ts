@@ -113,14 +113,12 @@ export function createStore<
       }
 
       if (computedSignals && prop in computedSignals) {
-        throw new TypeError(
-          `createStore: cannot write to computed property "${propStr}".`,
-        );
+        throw new TypeError(`createStore: cannot write to computed property "${propStr}".`);
       }
 
       throw new TypeError(
         `createStore: cannot set unknown property "${propStr}". ` +
-        `Only keys present in initialState are writable.`,
+          `Only keys present in initialState are writable.`,
       );
     },
 

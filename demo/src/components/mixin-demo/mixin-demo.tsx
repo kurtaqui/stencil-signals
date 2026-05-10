@@ -42,10 +42,10 @@ export class MixinDemo extends Mixin(SignalWatcher, LoggingMixin) {
   }
 
   render() {
-    const stats   = this.getStats();      // from LoggingMixin
-    const current = count.get();          // tracked by SignalWatcher
-    const prev    = prevCount.get() ?? 0; // also tracked
-    const delta   = current - prev;
+    const stats = this.getStats(); // from LoggingMixin
+    const current = count.get(); // tracked by SignalWatcher
+    const prev = prevCount.get() ?? 0; // also tracked
+    const delta = current - prev;
     const direction = delta > 0 ? '↑' : delta < 0 ? '↓' : '—';
 
     return (
@@ -67,14 +67,24 @@ export class MixinDemo extends Mixin(SignalWatcher, LoggingMixin) {
         </div>
 
         <div class="row">
-          <button class="btn minus" onClick={() => count.set(count.get() - step.get())}>−</button>
-          <button class="btn reset" onClick={() => count.set(0)}>Reset</button>
-          <button class="btn plus"  onClick={() => count.set(count.get() + step.get())}>+</button>
+          <button class="btn minus" onClick={() => count.set(count.get() - step.get())}>
+            −
+          </button>
+          <button class="btn reset" onClick={() => count.set(0)}>
+            Reset
+          </button>
+          <button class="btn plus" onClick={() => count.set(count.get() + step.get())}>
+            +
+          </button>
         </div>
 
         <div class="derived">
-          <div class="chip">previous: <strong>{prev}</strong></div>
-          <div class="chip">doubled: <strong>{doubled.get()}</strong></div>
+          <div class="chip">
+            previous: <strong>{prev}</strong>
+          </div>
+          <div class="chip">
+            doubled: <strong>{doubled.get()}</strong>
+          </div>
         </div>
 
         {/* LoggingMixin stats */}
@@ -93,8 +103,8 @@ export class MixinDemo extends Mixin(SignalWatcher, LoggingMixin) {
         </div>
 
         <p class="note">
-          Both mixins wrap <code>render()</code> and lifecycle callbacks.
-          Open DevTools console to see LoggingMixin output.
+          Both mixins wrap <code>render()</code> and lifecycle callbacks. Open DevTools console to
+          see LoggingMixin output.
         </p>
       </div>
     );
