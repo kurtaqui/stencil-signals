@@ -93,20 +93,21 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 
       let renderResult: unknown;
       let firstRun = true;
-      const self = this;
 
+      // Arrow function captures `this` from the enclosing render() scope —
+      // no `self` alias needed.
       // `preactEffect` fires synchronously on creation (first run).
       // firstRun guard lets us call super.render() for dep collection there,
       // and schedule forceUpdate on all subsequent fires (dep changed).
-      this.__disposeRenderEffect = preactEffect(function () {
+      this.__disposeRenderEffect = preactEffect(() => {
         if (firstRun) {
           firstRun = false;
           // Read all signals inside render — Preact tracks every .value access.
-          renderResult = self['__callSuperRender']();
+          renderResult = this.__callSuperRender();
         } else {
           // A dependency changed after the initial render — schedule re-render.
-          if (self.__connected) {
-            scheduler.schedule(() => forceUpdate(self as any));
+          if (this.__connected) {
+            scheduler.schedule(() => forceUpdate(this as any));
           }
         }
       });

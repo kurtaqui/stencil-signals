@@ -148,8 +148,8 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 			const newlyWatched = new Set<object>();
 
 			// Regular `function()` so `this` inside = the Watcher, not the component.
-			// eslint-disable-next-line @typescript-eslint/no-this-alias
-			const self = this;
+			// The component is looked up via componentForWatcher (WeakMap) — no
+			// `self` alias needed here.
 			const watcher = new Signal.subtle.Watcher(function (
 				this: InstanceType<typeof Signal.subtle.Watcher>,
 			) {

@@ -32,7 +32,6 @@ import type {
   SignalOptions,
   AdapterWatcher,
 } from './types';
-import { scheduler } from '../signals/core';
 
 // ─── WeakMap: wrapper → raw Preact signal ─────────────────────────────────────
 //
@@ -104,7 +103,8 @@ export const preactAdapter: SignalAdapter = {
 
       stopEffect = preactEffect(() => {
         // Reading each raw signal's .value subscribes this effect to it.
-        for (const raw of snapshot) (raw as any).value;
+        // `void` discards the value explicitly — the side-effect is the point.
+        for (const raw of snapshot) void ((raw as any).value as unknown);
 
         if (firstRun) {
           // Suppress initial synchronous fire — we only want to notify on change.
