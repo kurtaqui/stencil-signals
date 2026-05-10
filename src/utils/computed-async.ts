@@ -65,7 +65,7 @@
  */
 
 import { Signal } from 'signal-polyfill';
-import type { SignalState, SignalComputed } from '../signals/core';
+import type { SignalComputed } from '../signals/core';
 import { scheduler } from '../signals/core';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -200,15 +200,21 @@ export function computedAsync<T>(
 
   // Return a computed that reads the internal result state.
   // We also attach a `dispose` method so long-lived uses can clean up.
-  const output = new Signal.Computed<AsyncResult<T>>(() => result.get()) as SignalComputed<AsyncResult<T>> & { dispose(): void };
+  const output = new Signal.Computed<AsyncResult<T>>(() => result.get()) as SignalComputed<
+    AsyncResult<T>
+  > & { dispose(): void };
 
   (output as any).dispose = () => {
     disposed = true;
     currentController?.abort();
     for (const dep of Signal.subtle.introspectSources(depTracker)) {
-      try { watcher.unwatch(dep as any); } catch {}
+      try {
+        watcher.unwatch(dep as any);
+      } catch {}
     }
-    try { watcher.unwatch(depTracker); } catch {}
+    try {
+      watcher.unwatch(depTracker);
+    } catch {}
   };
 
   return output;

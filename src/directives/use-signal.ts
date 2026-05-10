@@ -51,9 +51,7 @@ import type { SignalState, SignalComputed } from '../signals/core';
  * - Writes (`this.prop = x`) delegate to `sig.set(x)` for State signals.
  *   Writing to a Computed signal throws a descriptive TypeError.
  */
-export function useSignal<T>(
-  sig: SignalState<T> | SignalComputed<T>,
-): PropertyDecorator {
+export function useSignal<T>(sig: SignalState<T> | SignalComputed<T>): PropertyDecorator {
   return function (_target: object, propertyKey: string | symbol): void {
     const isWritable = 'set' in sig && typeof (sig as any).set === 'function';
 
@@ -65,7 +63,7 @@ export function useSignal<T>(
         if (!isWritable) {
           throw new TypeError(
             `@useSignal: property "${String(propertyKey)}" is bound to a ` +
-            `read-only Signal.Computed. Writes are not allowed.`,
+              `read-only Signal.Computed. Writes are not allowed.`,
           );
         }
         (sig as SignalState<T>).set(value);

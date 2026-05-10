@@ -102,7 +102,11 @@ export function createWatcher(notify: () => void): {
     queueMicrotask(() => {
       if (disposed) return;
       for (const s of Signal.subtle.introspectSources(watcher)) {
-        try { watcher.watch(s as any); } catch { /* already disposed */ }
+        try {
+          watcher.watch(s as any);
+        } catch {
+          /* already disposed */
+        }
       }
     });
   });
@@ -114,7 +118,11 @@ export function createWatcher(notify: () => void): {
     dispose() {
       disposed = true;
       for (const sig of Signal.subtle.introspectSources(watcher)) {
-        try { watcher.unwatch(sig as any); } catch { /* already unwatched */ }
+        try {
+          watcher.unwatch(sig as any);
+        } catch {
+          /* already unwatched */
+        }
       }
     },
   };
@@ -136,5 +144,9 @@ export function collectSignals(
     return null;
   });
   tracker.get();
-  return new Set(Signal.subtle.introspectSources(tracker) as Array<SignalState<unknown> | SignalComputed<unknown>>);
+  return new Set(
+    Signal.subtle.introspectSources(tracker) as Array<
+      SignalState<unknown> | SignalComputed<unknown>
+    >,
+  );
 }

@@ -37,7 +37,9 @@ export function LoggingMixin<TBase extends MixedInCtor>(Base: TBase) {
         this.__totalConnectedMs += performance.now() - this.__connectedAt;
         this.__connectedAt = null;
       }
-      console.debug(`[${this.__tag}] disconnected — total connected: ${this.__totalConnectedMs.toFixed(1)}ms`);
+      console.debug(
+        `[${this.__tag}] disconnected — total connected: ${this.__totalConnectedMs.toFixed(1)}ms`,
+      );
       super.disconnectedCallback?.();
     }
 

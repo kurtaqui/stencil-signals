@@ -3,10 +3,7 @@
  * Runs entirely in-browser via Vite, no Stencil compiler needed.
  */
 
-import {
-  signal, computed, watchEffect,
-  computedPrevious, computedAsync,
-} from '../src/index';
+import { signal, computed, watchEffect, computedPrevious, computedAsync } from '../src/index';
 import { createStore } from '../src/utils/create-store';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -62,15 +59,26 @@ function log(parent: HTMLElement, text: string) {
     doubledEl.textContent = String(doubled.get());
   };
 
-  c.appendChild(row('count:', countEl,
-    btn('−', () => { count.set(count.get() - 1); refresh(); }),
-    btn('+', () => { count.set(count.get() + 1); refresh(); }),
-  ));
+  c.appendChild(
+    row(
+      'count:',
+      countEl,
+      btn('−', () => {
+        count.set(count.get() - 1);
+        refresh();
+      }),
+      btn('+', () => {
+        count.set(count.get() + 1);
+        refresh();
+      }),
+    ),
+  );
   c.appendChild(row('doubled:', doubledEl));
 
   const note = document.createElement('p');
   note.className = 'log';
-  note.textContent = 'Values update on button click (no reactive binding here — that requires SignalWatcher in a Stencil component).';
+  note.textContent =
+    'Values update on button click (no reactive binding here — that requires SignalWatcher in a Stencil component).';
   c.appendChild(note);
 }
 
@@ -80,7 +88,8 @@ function log(parent: HTMLElement, text: string) {
   const name = signal('world');
   const inputEl = document.createElement('input');
   inputEl.value = name.get();
-  inputEl.style.cssText = 'padding:.3rem;border-radius:4px;border:1px solid #ccc;margin-right:.5rem;';
+  inputEl.style.cssText =
+    'padding:.3rem;border-radius:4px;border:1px solid #ccc;margin-right:.5rem;';
   inputEl.oninput = () => name.set(inputEl.value);
 
   const outEl = val('');
@@ -90,7 +99,14 @@ function log(parent: HTMLElement, text: string) {
   });
 
   const r = row('name:', inputEl);
-  const r2 = row('effect output:', outEl, btn('dispose', () => { cleanup(); log(c, 'disposed — effect no longer fires'); }));
+  const r2 = row(
+    'effect output:',
+    outEl,
+    btn('dispose', () => {
+      cleanup();
+      log(c, 'disposed — effect no longer fires');
+    }),
+  );
   c.append(r, r2);
   log(c, 'watchEffect armed — type in the input above');
 }
@@ -111,19 +127,39 @@ function log(parent: HTMLElement, text: string) {
   });
 
   c.append(
-    row('a:', aEl, btn('a++', () => { a.set(a.get() + 1); aEl.textContent = String(a.get()); }),),
-    row('b:', bEl, btn('b+=10', () => { b.set(b.get() + 10); bEl.textContent = String(b.get()); }),),
-    row('sum:', sumEl, btn('dispose', () => { cleanup(); log(c, 'disposed'); })),
+    row(
+      'a:',
+      aEl,
+      btn('a++', () => {
+        a.set(a.get() + 1);
+        aEl.textContent = String(a.get());
+      }),
+    ),
+    row(
+      'b:',
+      bEl,
+      btn('b+=10', () => {
+        b.set(b.get() + 10);
+        bEl.textContent = String(b.get());
+      }),
+    ),
+    row(
+      'sum:',
+      sumEl,
+      btn('dispose', () => {
+        cleanup();
+        log(c, 'disposed');
+      }),
+    ),
   );
 }
 
 // ─── createStore() ────────────────────────────────────────────────────────────
 {
   const c = card('demo-store');
-  const store = createStore(
-    { price: 10, qty: 3 },
-    (s) => ({ total: computed(() => s.price * s.qty) }),
-  );
+  const store = createStore({ price: 10, qty: 3 }, (s) => ({
+    total: computed(() => s.price * s.qty),
+  }));
 
   const priceEl = val(String(store.price));
   const qtyEl = val(String(store.qty));
@@ -136,9 +172,30 @@ function log(parent: HTMLElement, text: string) {
   };
 
   c.append(
-    row('price:', priceEl, btn('price++', () => { store.price++; refresh(); })),
-    row('qty:', qtyEl, btn('qty++', () => { store.qty++; refresh(); })),
-    row('total:', totalEl, btn('reset', () => { store.$reset(); refresh(); })),
+    row(
+      'price:',
+      priceEl,
+      btn('price++', () => {
+        store.price++;
+        refresh();
+      }),
+    ),
+    row(
+      'qty:',
+      qtyEl,
+      btn('qty++', () => {
+        store.qty++;
+        refresh();
+      }),
+    ),
+    row(
+      'total:',
+      totalEl,
+      btn('reset', () => {
+        store.$reset();
+        refresh();
+      }),
+    ),
   );
 }
 
@@ -147,16 +204,22 @@ function log(parent: HTMLElement, text: string) {
   const c = card('demo-async');
   const userId = signal(1);
 
-  const user = computedAsync(async (abort) => {
-    const id = userId.get();
-    // Fake fetch — returns after 300 ms
-    await new Promise<void>((res, rej) => {
-      const t = setTimeout(res, 300);
-      abort.addEventListener('abort', () => { clearTimeout(t); rej(new DOMException('aborted', 'AbortError')); });
-    });
-    if (abort.aborted) return null;
-    return { id, name: `User #${id}` };
-  }, { initialValue: null });
+  const user = computedAsync(
+    async (abort) => {
+      const id = userId.get();
+      // Fake fetch — returns after 300 ms
+      await new Promise<void>((res, rej) => {
+        const t = setTimeout(res, 300);
+        abort.addEventListener('abort', () => {
+          clearTimeout(t);
+          rej(new DOMException('aborted', 'AbortError'));
+        });
+      });
+      if (abort.aborted) return null;
+      return { id, name: `User #${id}` };
+    },
+    { initialValue: null },
+  );
 
   const statusEl = val('');
   const valueEl = val('');
@@ -173,7 +236,9 @@ function log(parent: HTMLElement, text: string) {
 
   const idEl = val(String(userId.get()));
   c.append(
-    row('userId:', idEl,
+    row(
+      'userId:',
+      idEl,
       btn('next user', () => {
         userId.set(userId.get() + 1);
         idEl.textContent = String(userId.get());
@@ -204,12 +269,14 @@ function log(parent: HTMLElement, text: string) {
   // computedPrevious updates via microtask — use a small delay for the UI
   const nav = async (delta: number) => {
     page.set(page.get() + delta);
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 10));
     refresh();
   };
 
   c.append(
-    row('current page:', curEl,
+    row(
+      'current page:',
+      curEl,
       btn('← back', () => nav(-1)),
       btn('next →', () => nav(1)),
     ),
