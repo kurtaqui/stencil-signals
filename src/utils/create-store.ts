@@ -2,18 +2,18 @@
  * @kurtaqui/stencil-signals — utils/create-store.ts
  *
  * `createStore(initialState, computedFactory?)` — wrap a plain object in
- * per-key `Signal.State` values and return a reactive `Proxy` that looks and
- * feels like the original object.
+ * per-key signal states and return a reactive `Proxy` that looks and feels
+ * like the original object.
  *
  * ## Basic usage
  *
  * ```ts
  * const store = createStore({ count: 0, name: 'Alice' });
  *
- * store.count++;          // → Signal.State.set(1)
- * console.log(store.count); // → Signal.State.get() = 1
+ * store.count++;          // → signal.set(1)
+ * console.log(store.count); // → signal.get() = 1
  *
- * store.$signal('count'); // → raw Signal.State<number>
+ * store.$signal('count'); // → raw SignalState<number>
  * store.$reset();         // → all keys back to initial values
  * ```
  *
@@ -34,8 +34,8 @@
  * - Writing to an unknown key throws a `TypeError`.
  */
 
-import { Signal } from 'signal-polyfill';
-import type { SignalState, SignalComputed } from '../signals/core';
+import { getAdapter } from '../adapters/active';
+import type { SignalState, SignalComputed } from '../adapters/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,18 +58,22 @@ export type Store<
 export function createStore<
   T extends object,
   C extends Record<string, SignalComputed<unknown>> = Record<never, never>,
->(initialState: T, computedFactory?: (state: T) => C): Store<T, C> {
+>(
+  initialState: T,
+  computedFactory?: (state: T) => C,
+): Store<T, C> {
+  const adapter = getAdapter();
+
   // Snapshot initial values for $reset().
   const initial = { ...initialState } as T;
 
-  // One Signal.State per key.
+  // One signal state per key.
   const signals = {} as StateMap<T>;
   for (const key of Object.keys(initial) as Array<keyof T>) {
-    (signals as any)[key] = new Signal.State(initial[key]);
+    (signals as any)[key] = adapter.createState(initial[key]);
   }
 
   // computedSignals is populated after proxy construction (factory receives proxy).
-  // Declared with `let` so the proxy closure sees the populated value.
   let computedSignals: C | undefined;
 
   const proxy = new Proxy({} as Store<T, C>, {

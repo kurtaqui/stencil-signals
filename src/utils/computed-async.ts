@@ -64,8 +64,8 @@
  * | `equal` | `(a,b) => boolean` | `Object.is` | Skip update if resolved value is the same |
  */
 
-import { Signal } from 'signal-polyfill';
-import type { SignalComputed } from '../signals/core';
+import { getAdapter } from '../adapters/active';
+import type { SignalComputed } from '../adapters/types';
 import { scheduler } from '../signals/core';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -113,47 +113,53 @@ export function computedAsync<T>(
   options: ComputedAsyncOptions<T> = {},
 ): SignalComputed<AsyncResult<T>> {
   const { initialValue, equal = Object.is } = options;
+  const adapter = getAdapter();
 
-  // Internal state signal — holds the current AsyncResult
-  const result = new Signal.State<AsyncResult<T>>({
+  // Internal state signal — holds the current AsyncResult.
+  const result = adapter.createState<AsyncResult<T>>({
     status: 'pending',
     value: initialValue,
   });
 
-  // Track the currently active abort controller so we can cancel stale requests
+  // Track the currently active abort controller so we can cancel stale requests.
   let currentController: AbortController | null = null;
-  // Track last resolved value for stale-while-revalidate behaviour
+  // Track last resolved value for stale-while-revalidate behaviour.
   let lastResolved: T | undefined = initialValue;
   let disposed = false;
 
   // A computed that tracks signal deps inside `fn`. We never expose this
   // directly — it's only used to collect dependencies.
-  const depTracker = new Signal.Computed<void>(() => {
+  //
+  // Returns a new `{}` object on every evaluation so that Preact's equality
+  // check (`Object.is`) always sees a "changed" value and propagates to the
+  // watcher effect. TC39's Watcher fires on staleness (before equality checks),
+  // so the unique-reference trick is harmless there too.
+  const depTracker = adapter.createComputed<object>(() => {
     // Calling fn inside a computed records all signal.get() calls as deps.
     // We discard the return value here; actual execution happens in `run()`.
     try {
-      // We need to call fn to record deps, but we use a dummy AbortSignal
-      // and ignore the promise. This is intentional — dep tracking only.
       const dummy = new AbortController();
       const maybePromise = fn(dummy.signal);
-      // Immediately abort the dummy fetch if it was a real request
+      // Immediately abort the dummy fetch if it was a real request.
       dummy.abort();
-      // suppress unhandled rejection from the aborted dummy
+      // Suppress unhandled rejection from the aborted dummy.
       if (maybePromise && typeof (maybePromise as any).catch === 'function') {
         (maybePromise as any).catch(() => {});
       }
     } catch {
-      // ignore errors during dep-tracking pass
+      // Ignore errors during dep-tracking pass.
     }
+    // New object reference each call — forces Preact to propagate the change.
+    return {};
   });
 
-  // Do NOT call watcher.watch() inside notify — producerAccessed throws during
+  // Do NOT call watcher.watch() inside notify — in TC39 that throws during
   // inNotificationPhase. Re-arm is done inside the scheduled task instead.
-  const watcher = new Signal.subtle.Watcher(() => {
+  const watcher = adapter.createWatcher(() => {
     if (disposed) return;
     scheduler.schedule(() => {
       if (disposed) return;
-      // Re-arm: unwatch → re-evaluate depTracker (fresh dep tracking) → re-watch
+      // Re-arm: unwatch → re-evaluate depTracker (fresh dep tracking) → re-watch.
       watcher.unwatch(depTracker);
       depTracker.get();
       watcher.watch(depTracker);
@@ -164,57 +170,49 @@ export function computedAsync<T>(
   async function run() {
     if (disposed) return;
 
-    // Cancel any in-flight request
+    // Cancel any in-flight request.
     currentController?.abort();
     const controller = new AbortController();
     currentController = controller;
 
-    // Mark as pending, keeping the last resolved value
-    Signal.subtle.untrack(() => result.set({ status: 'pending', value: lastResolved }));
+    // Mark as pending, keeping the last resolved value.
+    adapter.untrack(() => result.set({ status: 'pending', value: lastResolved }));
 
     try {
-      // Run the actual async function
       const value = await fn(controller.signal);
 
-      // If aborted while awaiting, ignore the result
+      // If aborted while awaiting, ignore the result.
       if (controller.signal.aborted || disposed) return;
 
-      // Skip update if the resolved value is unchanged
-      const cur = Signal.subtle.untrack(() => result.get());
+      // Skip update if the resolved value is unchanged.
+      const cur = result.peek();
       if (cur.status === 'resolved' && equal(cur.value as T, value)) return;
 
       lastResolved = value;
-      Signal.subtle.untrack(() => result.set({ status: 'resolved', value }));
+      adapter.untrack(() => result.set({ status: 'resolved', value }));
     } catch (error) {
       if (controller.signal.aborted || disposed) return;
-      Signal.subtle.untrack(() => result.set({ status: 'error', error, value: lastResolved }));
+      adapter.untrack(() => result.set({ status: 'error', error, value: lastResolved }));
     }
   }
 
-  // Arm watcher — initial dep collection
+  // Arm watcher — initial dep collection.
   depTracker.get();
   watcher.watch(depTracker);
 
-  // Kick off the first run
+  // Kick off the first run.
   run();
 
   // Return a computed that reads the internal result state.
   // We also attach a `dispose` method so long-lived uses can clean up.
-  const output = new Signal.Computed<AsyncResult<T>>(() => result.get()) as SignalComputed<
-    AsyncResult<T>
-  > & { dispose(): void };
+  const output = adapter.createComputed<AsyncResult<T>>(
+    () => result.get(),
+  ) as SignalComputed<AsyncResult<T>> & { dispose(): void };
 
   (output as any).dispose = () => {
     disposed = true;
     currentController?.abort();
-    for (const dep of Signal.subtle.introspectSources(depTracker)) {
-      try {
-        watcher.unwatch(dep as any);
-      } catch {}
-    }
-    try {
-      watcher.unwatch(depTracker);
-    } catch {}
+    watcher.dispose();
   };
 
   return output;

@@ -41,57 +41,54 @@
  * ```
  */
 
-import { Signal } from 'signal-polyfill';
+import { getAdapter } from '../adapters/active';
 import { scheduler } from '../signals/core';
-import type { SignalState, SignalComputed } from '../signals/core';
+import type { SignalState, SignalComputed } from '../adapters/types';
 
 type AnyReadableSignal<T> = SignalState<T> | SignalComputed<T>;
 
 /**
  * Returns a signal that always holds the previous value of `source`.
  *
- * @param source  Any readable TC39 signal (State or Computed).
+ * @param source  Any readable signal (State or Computed).
  * @param initialValue  Value returned before the first change. Defaults to `undefined`.
  */
 export function computedPrevious<T>(
   source: AnyReadableSignal<T>,
   initialValue?: T,
 ): SignalComputed<T | undefined> {
-  // We store previous in a plain Signal.State so the computed can read it
+  const adapter = getAdapter();
+
+  // We store previous in a plain signal state so the computed can read it
   // without creating a circular dependency.
-  const prev = new Signal.State<T | undefined>(initialValue);
+  const prev = adapter.createState<T | undefined>(initialValue);
 
-  // A watcher fires whenever `source` changes. In the callback we capture the
-  // current value (which is still the old one, before re-evaluation) as the
-  // new "previous".
-  let lastSeen: T | undefined = initialValue;
+  // Track the last seen value — updated each time the source changes.
+  // Initialised to the current source value so the first change is detected.
+  let lastSeen: T | undefined = adapter.untrack(() => source.get());
 
-  const watcher = new Signal.subtle.Watcher(() => {
-    // Do NOT call watcher.watch() here — triggers producerAccessed during
-    // inNotificationPhase and throws in signal-polyfill.
-    // Schedule the prev update in the same micro-task batch as re-renders,
-    // and re-arm the watcher there (safe: outside notification phase).
+  const watcher = adapter.createWatcher(() => {
+    // Do NOT call watcher.watch() here — in TC39 that throws during the
+    // notification phase. Schedule the update and re-arm there instead.
     scheduler.schedule(() => {
-      const current = Signal.subtle.untrack(() => source.get());
+      const current = adapter.untrack(() => source.get());
       if (!Object.is(current, lastSeen)) {
-        prev.set(lastSeen);
+        // Set prev to the OLD value before updating lastSeen.
+        adapter.untrack(() => prev.set(lastSeen));
         lastSeen = current;
       }
-      // Re-arm for the next change
+      // Re-arm for the next change (safe here — outside notification phase).
       try {
-        watcher.watch(source as any);
+        watcher.watch(source);
       } catch {
-        /* disposed */
+        /* already disposed */
       }
     });
   });
 
-  // Seed lastSeen with the current value so the first change is tracked correctly
-  lastSeen = Signal.subtle.untrack(() => source.get());
-
-  watcher.watch(source as any);
+  watcher.watch(source);
 
   // The returned computed simply reads `prev` — it is reactive so any
   // component/effect that reads it will re-run when prev changes.
-  return new Signal.Computed<T | undefined>(() => prev.get());
+  return adapter.createComputed<T | undefined>(() => prev.get());
 }
