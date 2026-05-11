@@ -1,14 +1,11 @@
 /**
- * @kurtaqui/stencil-signals — default entry point (auto-detecting)
+ * @kurtaqui/stencil-signals/tc39 — TC39 entry point
  *
- * Import from "@kurtaqui/stencil-signals" to get automatic backend detection:
- * the library activates TC39 (signal-polyfill) if it is installed, otherwise
- * falls back to Preact (@preact/signals-core). Install exactly one as a peer
- * dependency; having both installed makes TC39 win.
+ * Import from "@kurtaqui/stencil-signals/tc39" to explicitly use the TC39
+ * signals polyfill (signal-polyfill) as the backend. All primitives share the
+ * same `.get()` / `.set()` / `.peek()` API regardless of backend.
  *
- * To pin a backend explicitly, use a sub-path import instead:
- *   "@kurtaqui/stencil-signals/tc39"    — always TC39 + exposes raw Signal ns
- *   "@kurtaqui/stencil-signals/preact"  — always Preact
+ * For automatic backend detection, import from "@kurtaqui/stencil-signals".
  *
  * Public API surface:
  *
@@ -16,7 +13,8 @@
  *  ──────────
  *  signal(value)              Create a writable SignalState
  *  computed(fn)               Create a read-only SignalComputed
- *  batch(fn)                  Batch signal writes (no-op on TC39)
+ *  batch(fn)                  No-op on TC39 (microtask scheduler coalesces)
+ *  Signal                     The raw TC39 Signal namespace (for advanced use)
  *
  *  Component integration
  *  ─────────────────────
@@ -38,12 +36,14 @@
  *  createStore(init)           Wraps a plain object in signals; returns a reactive Proxy
  */
 
-// ─── Auto-detect and activate adapter ────────────────────────────────────────
-// Top-level await is valid here because the package is pure ESM ("type":"module").
-// The module is fully evaluated (adapter set) before any consumer code runs.
+// ─── Activate TC39 adapter ────────────────────────────────────────────────────
+// Must be the very first side-effect so all utilities see the adapter.
 import { _setAdapter } from './adapters/active';
-import { detectAdapter } from './adapters/detect';
-_setAdapter(await detectAdapter());
+import { tc39Adapter } from './adapters/tc39';
+_setAdapter(tc39Adapter);
+
+// ─── TC39-specific raw namespace ─────────────────────────────────────────────
+export { Signal } from 'signal-polyfill';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 export {
@@ -64,8 +64,8 @@ export type {
 } from './adapters/types';
 
 // ─── Component integration ────────────────────────────────────────────────────
-export { SignalWatcher } from './mixins/signal-watcher';
-export type { SignalWatcherApi } from './mixins/signal-watcher';
+export { SignalWatcher } from './mixins/signal-watcher-tc39';
+export type { SignalWatcherApi } from './mixins/signal-watcher-tc39';
 
 // ─── Decorators ───────────────────────────────────────────────────────────────
 export { useSignal } from './directives/use-signal';
