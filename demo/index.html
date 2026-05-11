@@ -4,66 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@kurtaqui/stencil-signals demo</title>
-    <style>
-      body {
-        font-family: system-ui, sans-serif;
-        max-width: 640px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-      }
-      h2 {
-        margin-top: 2rem;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 0.4rem;
-      }
-      .card {
-        background: #f9f9f9;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-      }
-      button {
-        padding: 0.4rem 0.9rem;
-        margin-right: 0.4rem;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        cursor: pointer;
-      }
-      code {
-        background: #eee;
-        padding: 0.1rem 0.3rem;
-        border-radius: 3px;
-        font-size: 0.9em;
-      }
-      .log {
-        font-size: 0.85em;
-        color: #555;
-        margin-top: 0.5rem;
-      }
-    </style>
   </head>
   <body>
-    <h1>@kurtaqui/stencil-signals</h1>
-    <p>TC39 Signals integration for StencilJS — browser smoke test</p>
-
-    <h2>signal() + computed()</h2>
-    <div class="card" id="demo-signal"></div>
-
-    <h2>watchEffect() — auto-tracking</h2>
-    <div class="card" id="demo-watch-auto"></div>
-
-    <h2>watchEffect() — explicit deps</h2>
-    <div class="card" id="demo-watch-explicit"></div>
-
-    <h2>createStore()</h2>
-    <div class="card" id="demo-store"></div>
-
-    <h2>computedAsync()</h2>
-    <div class="card" id="demo-async"></div>
-
-    <h2>computedPrevious()</h2>
-    <div class="card" id="demo-prev"></div>
-
-    <script type="module" src="./main.ts"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
