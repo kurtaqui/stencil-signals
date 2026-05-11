@@ -61,3 +61,7 @@ Thumbs.db
 .nx/workspace-data
 
 .angular
+
+# Stencil demo build artifacts
+demo/stencil-dist/
+demo/.stencil/

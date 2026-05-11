@@ -8,5 +8,6 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src", "../src"]
+  "include": ["src", "../src"],
+  "exclude": ["stencil-src", "stencil-dist"]
 }

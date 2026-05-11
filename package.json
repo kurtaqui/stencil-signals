@@ -32,7 +32,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "demo": "vite --root demo",
+    "demo": "tsc && stencil build --config demo/stencil.config.ts && vite demo",
     "lint": "oxlint src/",
     "format": "oxfmt",
     "format:check": "oxfmt --check",

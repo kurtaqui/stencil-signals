@@ -45,6 +45,12 @@ importers:
         specifier: ^4.1.5
         version: 4.1.5(vite@8.0.11)
 
+  demo:
+    dependencies:
+      '@kurtaqui/stencil-signals':
+        specifier: workspace:*
+        version: link:..
+
 packages:
 
   '@emnapi/core@1.10.0':

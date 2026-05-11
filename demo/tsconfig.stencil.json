@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@kurtaqui/stencil-signals/tc39": ["../src/tc39.ts"],
+      "@kurtaqui/stencil-signals": ["../src/index.ts"]
+    },
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["stencil-src/**/*.ts", "stencil-src/**/*.tsx"]
+}
