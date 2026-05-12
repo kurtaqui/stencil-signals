@@ -5,13 +5,13 @@ import { count, step, doubled } from '../../store';
 @Component({ tag: 'counter-demo', shadow: false })
 export class CounterDemo extends Mixin(SignalWatcher) {
 	render() {
-		const c = count.get();
-		const s = step.get();
+		const c = count();
+		const s = step();
 		return (
 			<div>
 				<div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.75rem', alignItems: 'baseline' }}>
 					<span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{c}</span>
-					<span style={{ color: '#555' }}>doubled: <strong>{doubled.get()}</strong></span>
+					<span style={{ color: '#555' }}>doubled: <strong>{doubled()}</strong></span>
 				</div>
 				<div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginBottom: '0.5rem' }}>
 					<button onClick={() => count.set(c - s)}>−{s}</button>

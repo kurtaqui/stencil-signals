@@ -7,10 +7,10 @@ import { count, step, doubled, prevCount } from '../../store';
 export class MixinDemo extends Mixin(SignalWatcher, LoggingMixin) {
 	render() {
 		const stats = this.getStats();
-		const c = count.get();
-		const s = step.get();
-		const d = doubled.get();
-		const prev = prevCount.get() ?? 0;
+		const c = count();
+		const s = step();
+		const d = doubled();
+		const prev = prevCount() ?? 0;
 		const delta = c - prev;
 
 		return (

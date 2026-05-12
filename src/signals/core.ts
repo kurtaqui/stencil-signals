@@ -118,9 +118,9 @@ export function collectSignals(
 		fn();
 		return null;
 	});
-	// The first .get() evaluates and records deps — but we can't introspect
+	// The first call evaluates and records deps — but we can't introspect
 	// Preact's deps directly. collectSignals is primarily a debug utility and
 	// works best with the TC39 backend. On Preact it returns an empty set.
-	tracker.get();
+	tracker();
 	return accessed;
 }

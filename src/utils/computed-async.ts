@@ -149,16 +149,18 @@ function _computedAsyncWithHost<T>(
 	let isDisposed = false;
 
 	// Stable wrapper — the class property reference never changes.
-	// get/peek always delegate to the current inner signal.
-	const wrapper = {
-		get(): AsyncResult<T> { return inner.get(); },
-		peek(): AsyncResult<T> { return inner.peek(); },
-		dispose(): void {
-			if (isDisposed) return;
-			isDisposed = true;
-			inner.dispose();
+	// call/peek always delegate to the current inner signal.
+	const wrapper = Object.assign(
+		() => inner(),
+		{
+			peek(): AsyncResult<T> { return inner.peek(); },
+			dispose(): void {
+				if (isDisposed) return;
+				isDisposed = true;
+				inner.dispose();
+			},
 		},
-	} as DisposableSignal<AsyncResult<T>>;
+	) as DisposableSignal<AsyncResult<T>>;
 
 	function reinit(): void {
 		if (!isDisposed) return; // still live — first connectedCallback
@@ -229,7 +231,7 @@ function _computedAsyncCore<T>(
 			if (disposed) return;
 			// Re-arm: unwatch → re-evaluate depTracker (fresh dep tracking) → re-watch.
 			watcher.unwatch(depTracker);
-			depTracker.get();
+			depTracker();
 			watcher.watch(depTracker);
 			run();
 		});
@@ -265,7 +267,7 @@ function _computedAsyncCore<T>(
 	}
 
 	// Arm watcher — initial dep collection.
-	depTracker.get();
+	depTracker();
 	watcher.watch(depTracker);
 
 	// Kick off the first run.
@@ -274,7 +276,7 @@ function _computedAsyncCore<T>(
 	// Return a computed that reads the internal result state.
 	// We also attach a `dispose` method so long-lived uses can clean up.
 	const output = adapter.createComputed<AsyncResult<T>>(
-		() => result.get(),
+		() => result(),
 	) as DisposableSignal<AsyncResult<T>>;
 
 	(output as any).dispose = () => {

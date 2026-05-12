@@ -14,8 +14,8 @@ export class ControllerDemo extends ReactiveControllerHost {
 		super.connectedCallback(); // activates owner scope via SignalWatcherController
 		// watchEffect auto-registers with the owner scope and is disposed on disconnect
 		watchEffect(() => {
-			console.log('[controller-demo] watchEffect running, count =', count.get());
-			document.title = `count: ${count.get()}`;
+			console.log('[controller-demo] watchEffect running, count =', count());
+			document.title = `count: ${count()}`;
 		});
 	}
 
@@ -25,13 +25,13 @@ export class ControllerDemo extends ReactiveControllerHost {
 	}
 
 	render() {
-		const c = count.get();
-		const s = step.get();
+		const c = count();
+		const s = step();
 		return (
 			<div>
 				<div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.75rem', alignItems: 'baseline' }}>
 					<span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{c}</span>
-					<span style={{ color: '#555' }}>doubled: <strong>{doubled.get()}</strong></span>
+					<span style={{ color: '#555' }}>doubled: <strong>{doubled()}</strong></span>
 				</div>
 				<div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginBottom: '0.5rem' }}>
 					<button onClick={() => count.set(c - s)}>−{s}</button>

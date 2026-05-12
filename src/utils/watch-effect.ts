@@ -163,7 +163,7 @@ function explicitDepsEffect(
 
 	function readDeps(): unknown[] {
 		// Read dep values without creating tracking subscriptions.
-		return getAdapter().untrack(() => deps.map((d) => d.get()));
+		return getAdapter().untrack(() => deps.map((d) => d()));
 	}
 
 	function runCleanups() {

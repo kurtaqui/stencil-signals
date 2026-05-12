@@ -10,7 +10,7 @@ export class WatchEffectDemo extends Mixin(SignalWatcher) {
 	// Capture the returned stop fn so the "Dispose effect" button can still stop it manually.
 	readonly watchTitleClean = watchEffect(() => {
 		disposed.set(false);
-		document.title = `Hello, ${name.get()}!`;
+		document.title = `Hello, ${name()}!`;
 	}, this);
 
 	render() {
@@ -20,22 +20,22 @@ export class WatchEffectDemo extends Mixin(SignalWatcher) {
 					<label>
 						Name:{' '}
 						<input
-							value={name.get()}
+							value={name()}
 							onInput={(e) => name.set((e.target as HTMLInputElement).value)}
 							style={{ marginLeft: '0.4rem' }}
 						/>
 					</label>
 				</div>
 				<p style={{ margin: '0.25rem 0', fontSize: '0.9em', color: '#555' }}>
-					Browser tab title: <em>&ldquo;Hello, {name.get()}!&rdquo;</em>
+					Browser tab title: <em>&ldquo;Hello, {name()}!&rdquo;</em>
 				</p>
-				<p style={{ margin: '0.25rem 0', fontSize: '0.85em', color: disposed.get() ? '#c00' : '#080' }}>
-					Effect: {disposed.get() ? 'disposed' : 'active'}
+				<p style={{ margin: '0.25rem 0', fontSize: '0.85em', color: disposed() ? '#c00' : '#080' }}>
+					Effect: {disposed() ? 'disposed' : 'active'}
 				</p>
 				<button
 					style={{ marginTop: '0.4rem', fontSize: '0.85em' }}
 					onClick={() => { this.watchTitleClean?.(); disposed.set(true); }}
-					disabled={disposed.get()}
+					disabled={disposed()}
 				>
 					Dispose effect
 				</button>

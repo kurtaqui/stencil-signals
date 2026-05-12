@@ -46,17 +46,20 @@ const tick = () => new Promise<void>((r) => queueMicrotask(r));
 describe('signal()', () => {
 	it('holds an initial value', () => {
 		const s = signal(42);
-		expect(s.get()).toBe(42);
+		expect(s()).toBe(42);
 	});
 
 	it('updates on set()', () => {
 		const s = signal(0);
 		s.set(7);
-		expect(s.get()).toBe(7);
+		expect(s()).toBe(7);
 	});
 
-	it('is a Signal.State instance', () => {
-		expect(signal('x')).toBeInstanceOf(Signal.State);
+	it('is a callable function with set() and peek()', () => {
+		const s = signal('x');
+		expect(typeof s).toBe('function');
+		expect(typeof s.set).toBe('function');
+		expect(typeof s.peek).toBe('function');
 	});
 
 	it('respects custom equals — skips notify when equal', async () => {
@@ -76,32 +79,32 @@ describe('signal()', () => {
 describe('computed()', () => {
 	it('derives from a signal', () => {
 		const base = signal(3);
-		const triple = computed(() => base.get() * 3);
-		expect(triple.get()).toBe(9);
+		const triple = computed(() => base() * 3);
+		expect(triple()).toBe(9);
 	});
 
 	it('updates when dependency changes', () => {
 		const n = signal(2);
-		const sq = computed(() => n.get() ** 2);
-		expect(sq.get()).toBe(4);
+		const sq = computed(() => n() ** 2);
+		expect(sq()).toBe(4);
 		n.set(5);
-		expect(sq.get()).toBe(25);
+		expect(sq()).toBe(25);
 	});
 
 	it('chains computeds', () => {
 		const a = signal(1);
-		const b = computed(() => a.get() + 1);
-		const c = computed(() => b.get() * 10);
-		expect(c.get()).toBe(20);
+		const b = computed(() => a() + 1);
+		const c = computed(() => b() * 10);
+		expect(c()).toBe(20);
 		a.set(4);
-		expect(c.get()).toBe(50);
+		expect(c()).toBe(50);
 	});
 
 	it('is lazy — does not recompute until read', () => {
 		const fn = vi.fn(() => 1);
 		const c = computed(fn);
 		expect(fn).not.toHaveBeenCalled();
-		c.get();
+		c();
 		expect(fn).toHaveBeenCalledOnce();
 	});
 });
@@ -163,7 +166,7 @@ describe('createStore()', () => {
 	it('exposes raw signal via $signal()', () => {
 		const store = createStore({ x: 10 });
 		const sig = store.$signal('x');
-		expect(sig.get()).toBe(10);
+		expect(sig()).toBe(10);
 		sig.set(20);
 		expect(store.x).toBe(20);
 	});
@@ -207,7 +210,7 @@ describe('watchEffect() — auto-tracking', () => {
 	it('re-runs when accessed signal changes', async () => {
 		const s = signal('a');
 		const fn = vi.fn(() => {
-			s.get();
+			s();
 		});
 		const cleanup = watchEffect(fn);
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -222,7 +225,7 @@ describe('watchEffect() — auto-tracking', () => {
 		const s = signal(0);
 		const innerCleanup = vi.fn();
 		const cleanup = watchEffect(() => {
-			s.get();
+			s();
 			return innerCleanup;
 		});
 		s.set(1);
@@ -235,7 +238,7 @@ describe('watchEffect() — auto-tracking', () => {
 	it('does not re-run after cleanup is called', async () => {
 		const s = signal(0);
 		const fn = vi.fn(() => {
-			s.get();
+			s();
 		});
 		const cleanup = watchEffect(fn);
 		cleanup();
@@ -251,7 +254,7 @@ describe('watchEffect() — auto-tracking', () => {
 		const a = signal(1);
 		const b = signal(10);
 		const fn = vi.fn(() => {
-			toggle.get() ? b.get() : a.get();
+			toggle() ? b() : a();
 		});
 		const cleanup = watchEffect(fn);
 
@@ -305,7 +308,7 @@ describe('watchEffect() — explicit deps', () => {
 		const other = signal(100); // NOT in deps list, but read inside fn
 		const fn = vi.fn(([d]: number[]) => {
 			// deliberately read `other` — should NOT cause re-run
-			other.get();
+			other();
 		});
 		const cleanup = watchEffect([dep], fn);
 		const callsBefore = fn.mock.calls.length;
@@ -390,13 +393,13 @@ describe('computedPrevious()', () => {
 	it('returns undefined before any change by default', () => {
 		const s = signal(42);
 		const prev = computedPrevious(s);
-		expect(prev.get()).toBeUndefined();
+		expect(prev()).toBeUndefined();
 	});
 
 	it('returns explicit initialValue before first change', () => {
 		const s = signal(10);
 		const prev = computedPrevious(s, -1);
-		expect(prev.get()).toBe(-1);
+		expect(prev()).toBe(-1);
 	});
 
 	it('returns the value before the last set()', async () => {
@@ -405,7 +408,7 @@ describe('computedPrevious()', () => {
 		s.set(5);
 		await tick();
 		await tick();
-		expect(prev.get()).toBe(0);
+		expect(prev()).toBe(0);
 	});
 
 	it('tracks multiple changes in sequence', async () => {
@@ -415,33 +418,33 @@ describe('computedPrevious()', () => {
 		s.set('b');
 		await tick();
 		await tick();
-		expect(prev.get()).toBe('a');
+		expect(prev()).toBe('a');
 
 		s.set('c');
 		await tick();
 		await tick();
-		expect(prev.get()).toBe('b');
+		expect(prev()).toBe('b');
 
 		s.set('d');
 		await tick();
 		await tick();
-		expect(prev.get()).toBe('c');
+		expect(prev()).toBe('c');
 	});
 
 	it('works with a computed signal as source', async () => {
 		const n = signal(1);
-		const doubled = computed(() => n.get() * 2);
+		const doubled = computed(() => n() * 2);
 		const prevDoubled = computedPrevious(doubled);
 
 		// seed
-		doubled.get();
+		doubled();
 
 		n.set(3); // doubled → 6
 		await tick();
 		await tick();
 		expect((prev) => prev).toBeDefined();
 		// prevDoubled should have held 2 before changing to 6
-		const val = prevDoubled.get();
+		const val = prevDoubled();
 		expect(val === 2 || val === undefined).toBe(true);
 	});
 
@@ -451,7 +454,7 @@ describe('computedPrevious()', () => {
 		s.set(7); // same value — TC39 signals won't notify
 		await tick();
 		await tick();
-		expect(prev.get()).toBeUndefined(); // never changed
+		expect(prev()).toBeUndefined(); // never changed
 	});
 });
 
@@ -460,20 +463,20 @@ describe('computedPrevious()', () => {
 describe('computedAsync()', () => {
 	it('starts in pending state', () => {
 		const result = computedAsync(async () => 42);
-		expect(result.get().status).toBe('pending');
+		expect(result().status).toBe('pending');
 		(result as any).dispose?.();
 	});
 
 	it('resolves to the returned value', async () => {
 		const result = computedAsync(async () => 'hello');
 		await flush();
-		expect(result.get()).toEqual({ status: 'resolved', value: 'hello' });
+		expect(result()).toEqual({ status: 'resolved', value: 'hello' });
 		(result as any).dispose?.();
 	});
 
 	it('carries initialValue in pending state', () => {
 		const result = computedAsync(async () => 99, { initialValue: 0 });
-		expect(result.get()).toMatchObject({ status: 'pending', value: 0 });
+		expect(result()).toMatchObject({ status: 'pending', value: 0 });
 		(result as any).dispose?.();
 	});
 
@@ -482,7 +485,7 @@ describe('computedAsync()', () => {
 		let resolveNext!: (v: number) => void;
 
 		const result = computedAsync(async (abortSignal) => {
-			const current = id.get();
+			const current = id();
 			if (current === 1) return 100;
 			return new Promise<number>((r) => {
 				resolveNext = r;
@@ -490,18 +493,18 @@ describe('computedAsync()', () => {
 		});
 
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 100 });
+		expect(result()).toMatchObject({ status: 'resolved', value: 100 });
 
 		id.set(2); // triggers re-run; will stay pending until resolveNext called
 		await tick();
 		// Still shows last resolved value in pending
-		const pending = result.get();
+		const pending = result();
 		expect(pending.status).toBe('pending');
 		expect(pending.value).toBe(100);
 
 		resolveNext(200);
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 200 });
+		expect(result()).toMatchObject({ status: 'resolved', value: 200 });
 		(result as any).dispose?.();
 	});
 
@@ -510,7 +513,7 @@ describe('computedAsync()', () => {
 			throw new Error('boom');
 		});
 		await flush();
-		const r = result.get();
+		const r = result();
 		expect(r.status).toBe('error');
 		if (isError(r)) expect(r.error).toBeInstanceOf(Error);
 		(result as any).dispose?.();
@@ -521,17 +524,17 @@ describe('computedAsync()', () => {
 		const calls: number[] = [];
 
 		const result = computedAsync(async () => {
-			const v = id.get();
+			const v = id();
 			calls.push(v);
 			return v * 10;
 		});
 
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 10 });
+		expect(result()).toMatchObject({ status: 'resolved', value: 10 });
 
 		id.set(2);
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 20 });
+		expect(result()).toMatchObject({ status: 'resolved', value: 20 });
 		expect(calls).toContain(2);
 		(result as any).dispose?.();
 	});
@@ -541,7 +544,7 @@ describe('computedAsync()', () => {
 		const aborts: boolean[] = [];
 
 		const result = computedAsync(async (abortSignal) => {
-			id.get(); // track dep
+			id(); // track dep
 			await new Promise<void>((_, reject) => {
 				abortSignal.addEventListener('abort', () => {
 					aborts.push(true);
@@ -567,11 +570,11 @@ describe('computedAsync()', () => {
 	it('returns sync value when fn returns non-Promise', async () => {
 		const flag = signal(true);
 		const result = computedAsync((abortSig) => {
-			if (flag.get()) return 'sync-value' as any;
+			if (flag()) return 'sync-value' as any;
 			return Promise.resolve('async-value');
 		});
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 'sync-value' });
+		expect(result()).toMatchObject({ status: 'resolved', value: 'sync-value' });
 		(result as any).dispose?.();
 	});
 
@@ -604,13 +607,13 @@ describe('host lifecycle — computedAsync', () => {
 		const calls: number[] = [];
 
 		const result = computedAsync<number>(async () => {
-			const v = id.get();
+			const v = id();
 			calls.push(v);
 			return v * 10;
 		}, host);
 
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 10 });
+		expect(result()).toMatchObject({ status: 'resolved', value: 10 });
 
 		// Snapshot call count — dep-tracking pass + run() may both call fn.
 		const callsAtConnect = calls.length;
@@ -619,13 +622,13 @@ describe('host lifecycle — computedAsync', () => {
 		host.disconnect();
 		id.set(2);
 		await flush();
-		expect(result.get().status).toBe('resolved'); // still shows last value
+		expect(result().status).toBe('resolved'); // still shows last value
 		expect(calls.length).toBe(callsAtConnect); // did NOT re-run after disconnect
 
 		// Reconnect — watcher reinits and reruns with current dep value.
 		host.reconnect();
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 20 });
+		expect(result()).toMatchObject({ status: 'resolved', value: 20 });
 		expect(calls).toContain(2);
 	});
 
@@ -634,12 +637,12 @@ describe('host lifecycle — computedAsync', () => {
 		const result = computedAsync(async () => 42, host);
 
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 42 });
+		expect(result()).toMatchObject({ status: 'resolved', value: 42 });
 
 		// Reinit without a prior disconnect — should be harmless.
 		host.reconnect();
 		await flush();
-		expect(result.get()).toMatchObject({ status: 'resolved', value: 42 });
+		expect(result()).toMatchObject({ status: 'resolved', value: 42 });
 	});
 });
 
@@ -649,22 +652,22 @@ describe('host lifecycle — computedPrevious', () => {
 		const src = signal(1);
 		const prev = computedPrevious(src, host);
 
-		expect(prev.get()).toBeUndefined();
+		expect(prev()).toBeUndefined();
 		src.set(2);
 		await tick();
-		expect(prev.get()).toBe(1);
+		expect(prev()).toBe(1);
 
 		// Disconnect — watcher stops tracking.
 		host.disconnect();
 		src.set(3);
 		await tick();
-		expect(prev.get()).toBe(1); // still the last value before disconnect
+		expect(prev()).toBe(1); // still the last value before disconnect
 
 		// Reconnect — watcher reinits and starts tracking again.
 		host.reconnect();
 		src.set(4);
 		await tick();
-		expect(prev.get()).toBe(3); // previous is the value at time of reconnect
+		expect(prev()).toBe(3); // previous is the value at time of reconnect
 	});
 
 	it('reinit is a no-op when watcher is still live', async () => {
@@ -674,12 +677,12 @@ describe('host lifecycle — computedPrevious', () => {
 
 		src.set(20);
 		await tick();
-		expect(prev.get()).toBe(10);
+		expect(prev()).toBe(10);
 
 		host.reconnect(); // no-op
 		src.set(30);
 		await tick();
-		expect(prev.get()).toBe(20);
+		expect(prev()).toBe(20);
 	});
 });
 
@@ -689,7 +692,7 @@ describe('host lifecycle — watchEffect (auto-tracking)', () => {
 		const count = signal(0);
 		const log: number[] = [];
 
-		watchEffect(() => { log.push(count.get()); }, host);
+		watchEffect(() => { log.push(count()); }, host);
 		expect(log).toEqual([0]);
 
 		count.set(1);

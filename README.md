@@ -37,14 +37,14 @@ export class MyCounter {
 ```tsx
 // Shared reactive state — any component reading these signals re-renders on change
 export const count = signal(0);
-export const doubled = computed(() => count.get() * 2);
+export const doubled = computed(() => count() * 2);
 
 @Component({ tag: 'my-counter' })
 export class MyCounter extends SignalWatcher(class {}) {
   render() {
     return (
-      <button onClick={() => count.set(count.get() + 1)}>
-        {count.get()} (×2: {doubled.get()})
+      <button onClick={() => count.set(count() + 1)}>
+        {count()} (×2: {doubled()})
       </button>
     );
   }
@@ -95,11 +95,7 @@ npm install @kurtaqui/stencil-signals @preact/signals-core
 import { signal, computed } from '@kurtaqui/stencil-signals';
 
 export const count = signal(0);
-export const doubled = computed(() => count.get() * 2);
-```
-
-```tsx
-// my-counter.tsx
+export const doubled = computed(() => count() * 2);
 import { Component } from '@stencil/core';
 import { SignalWatcher, useSignal } from '@kurtaqui/stencil-signals';
 import { count, doubled } from './store';
@@ -111,7 +107,7 @@ export class MyCounter extends SignalWatcher(class {}) {
   render() {
     return (
       <div>
-        <p>Count: {this.count} — doubled: {doubled.get()}</p>
+        <p>Count: {this.count} — doubled: {doubled()}</p>
         <button onClick={() => this.count++}>+1</button>
       </div>
     );
@@ -133,7 +129,7 @@ Any other component that reads `count` or `doubled` will also re-render when tho
 @Component({ tag: 'my-comp', shadow: true })
 export class MyComp extends SignalWatcher(class {}) {
   render() {
-    return <p>{mySignal.get()}</p>;
+    return <p>{mySignal()}</p>;
   }
 }
 ```
@@ -152,7 +148,7 @@ export class MyComp extends Mixin(SignalWatcher, LoggingMixin) {
   }
 
   render() {
-    return <p>{mySignal.get()}</p>;
+    return <p>{mySignal()}</p>;
   }
 }
 ```
@@ -225,8 +221,8 @@ export class MyCounter extends ReactiveControllerHost {
   render() {
     return (
       <div>
-        <p>{count.get()} (doubled: {doubled.get()})</p>
-        <button onClick={() => count.set(count.get() + 1)}>+1</button>
+        <p>{count()} (doubled: {doubled()})</p>
+        <button onClick={() => count.set(count() + 1)}>+1</button>
       </div>
     );
   }
@@ -252,7 +248,7 @@ Alternatively, pass `this` directly to any watcher utility (even from a class pr
 
 ### `@useSignal`
 
-Bind a signal to a class property. Reads call `signal.get()`; writes call `signal.set()`.
+Bind a signal to a class property. Reads call `sig()`; writes call `signal.set()`.
 
 ```tsx
 const theme = signal<'light' | 'dark'>('light');
@@ -280,7 +276,7 @@ export class MyComp extends SignalWatcher(class {}) {
 
 ```ts
 const stop = watchEffect(() => {
-  document.title = `Count: ${count.get()}`;
+  document.title = `Count: ${count()}`;
 });
 
 stop(); // dispose manually
@@ -292,7 +288,7 @@ Inside a `SignalWatcher` component, pass `this` as the last argument — the eff
 @Component({ tag: 'my-comp', shadow: false })
 export class MyComp extends Mixin(SignalWatcher) {
    readonly titleWatch = watchEffect(() => {
-    document.title = `Count: ${count.get()}`;
+    document.title = `Count: ${count()}`;
   }, this);
 
   // _stop() can still be called manually to dispose early
@@ -301,7 +297,7 @@ export class MyComp extends Mixin(SignalWatcher) {
 
 If the callback returns a function, it is called as cleanup before the next re-run.
 
-**Explicit dependencies** — list the signals you care about; values are passed as a typed tuple (no `.get()` needed inside `fn`):
+**Explicit dependencies** — list the signals you care about; values are passed as a typed tuple (no `()` call needed inside `fn`):
 
 ```ts
 const stop = watchEffect(
@@ -333,9 +329,9 @@ Signal reads *inside* `fn` that are not in `deps` are untracked — giving you p
 
 | | Auto-tracking | Explicit deps |
 |---|---|---|
-| Dep declaration | Implicit (any `.get()` inside fn) | Explicit array |
+| Dep declaration | Implicit (any `sig()` call inside fn) | Explicit array |
 | Risk of unexpected re-runs | Higher | None |
-| Values passed to fn | No — use `.get()` manually | Yes, typed tuple |
+| Values passed to fn | No — call `sig()` manually | Yes, typed tuple |
 | Best for | Simple reactive side-effects | Precise control, async work |
 
 ### `computedAsync`
@@ -351,13 +347,13 @@ const userId = signal(1);
 export class UserCard extends Mixin(SignalWatcher) {
   // Pass `this` — auto-disposed on disconnect, reinited on reconnect.
   readonly user = computedAsync<User>(async (abortSignal) => {
-    const res = await fetch(`/api/users/${userId.get()}`, { signal: abortSignal });
+    const res = await fetch(`/api/users/${userId()}`, { signal: abortSignal });
     if (!res.ok) throw new Error(res.statusText);
     return res.json() as Promise<User>;
   }, this);
 
   render() {
-    const result = this.user.get();
+    const result = this.user();
     if (isPending(result))  return <p>Loading…</p>;
     if (isError(result))    return <p>Error: {String(result.error)}</p>;
     return <UserCard user={result.value} />;
@@ -369,7 +365,7 @@ Without a component host (e.g. for module-level state) you can still use the opt
 
 ```ts
 const user = computedAsync(async (abortSignal) => {
-  const res = await fetch(`/api/users/${userId.get()}`, { signal: abortSignal });
+  const res = await fetch(`/api/users/${userId()}`, { signal: abortSignal });
   return res.json() as Promise<User>;
 }, { initialValue: null });
 
@@ -394,9 +390,9 @@ const page = signal(1);
 const prevPage = computedPrevious(page); // undefined until first change
 
 page.set(2);
-prevPage.get(); // 1
+prevPage(); // 1
 page.set(3);
-prevPage.get(); // 2
+prevPage(); // 2
 ```
 
 Inside a `SignalWatcher` component, pass `this` to get automatic dispose-on-disconnect / reinit-on-reconnect:
@@ -407,8 +403,8 @@ export class SlideView extends Mixin(SignalWatcher) {
   readonly prevPage = computedPrevious(page, this);
 
   render() {
-    const direction = page.get() > (this.prevPage.get() ?? 0) ? 'forward' : 'back';
-    return <div class={`slide slide--${direction}`}>{page.get()}</div>;
+    const direction = page() > (this.prevPage() ?? 0) ? 'forward' : 'back';
+    return <div class={`slide slide--${direction}`}>{page()}</div>;
   }
 }
 ```
