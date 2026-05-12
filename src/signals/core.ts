@@ -11,11 +11,11 @@
 
 import { getAdapter } from '../adapters/active';
 export type {
-  SignalState,
-  SignalComputed,
-  SignalOptions,
-  ComputedOptions,
-  AdapterWatcher,
+	SignalState,
+	SignalComputed,
+	SignalOptions,
+	ComputedOptions,
+	AdapterWatcher,
 } from '../adapters/types';
 
 // ─── Scheduler ────────────────────────────────────────────────────────────────
@@ -29,35 +29,35 @@ let effectsPending = false;
 const pendingFns: Array<() => void> = [];
 
 export const scheduler = {
-  schedule(fn: () => void): void {
-    pendingFns.push(fn);
-    if (!effectsPending) {
-      effectsPending = true;
-      queueMicrotask(() => {
-        effectsPending = false;
-        const toRun = pendingFns.splice(0);
-        for (const f of toRun) f();
-      });
-    }
-  },
+	schedule(fn: () => void): void {
+		pendingFns.push(fn);
+		if (!effectsPending) {
+			effectsPending = true;
+			queueMicrotask(() => {
+				effectsPending = false;
+				const toRun = pendingFns.splice(0);
+				for (const f of toRun) f();
+			});
+		}
+	},
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
 /** Create a writable signal holding `value`. */
 export function signal<T>(
-  value: T,
-  options?: import('../adapters/types').SignalOptions<T>,
+	value: T,
+	options?: import('../adapters/types').SignalOptions<T>,
 ): import('../adapters/types').SignalState<T> {
-  return getAdapter().createState(value, options);
+	return getAdapter().createState(value, options);
 }
 
 /** Create a read-only derived signal whose value is computed by `fn`. */
 export function computed<T>(
-  fn: () => T,
-  options?: import('../adapters/types').ComputedOptions<T>,
+	fn: () => T,
+	options?: import('../adapters/types').ComputedOptions<T>,
 ): import('../adapters/types').SignalComputed<T> {
-  return getAdapter().createComputed(fn, options);
+	return getAdapter().createComputed(fn, options);
 }
 
 /**
@@ -66,7 +66,7 @@ export function computed<T>(
  * Preact backend: delegates to Preact's batch().
  */
 export function batch<T>(fn: () => T): T {
-  return getAdapter().batch(fn);
+	return getAdapter().batch(fn);
 }
 
 // ─── Active owner (effect scope) ────────────────────────────────────────────
@@ -80,12 +80,12 @@ let _activeOwner: Array<() => void> | null = null;
 
 /** @internal — used by SignalWatcher to set the active owner scope. */
 export function setActiveOwner(list: Array<() => void> | null): void {
-  _activeOwner = list;
+	_activeOwner = list;
 }
 
 /** @internal — used by watcher utilities to auto-register with the active owner. */
 export function getActiveOwner(): Array<() => void> | null {
-  return _activeOwner;
+	return _activeOwner;
 }
 
 // ─── createWatcher() ──────────────────────────────────────────────────────────
@@ -97,9 +97,9 @@ export function getActiveOwner(): Array<() => void> | null {
  * Returns `{ watch(sig), unwatch(sig), dispose() }`.
  */
 export function createWatcher(
-  notify: () => void,
+	notify: () => void,
 ): import('../adapters/types').AdapterWatcher {
-  return getAdapter().createWatcher(notify);
+	return getAdapter().createWatcher(notify);
 }
 
 // ─── collectSignals() ─────────────────────────────────────────────────────────
@@ -111,16 +111,16 @@ export function createWatcher(
  * Note: relies on the adapter's createComputed — works on both backends.
  */
 export function collectSignals(
-  fn: () => void,
+	fn: () => void,
 ): Set<import('../adapters/types').SignalState<unknown> | import('../adapters/types').SignalComputed<unknown>> {
-  const accessed = new Set<import('../adapters/types').SignalState<unknown> | import('../adapters/types').SignalComputed<unknown>>();
-  const tracker = getAdapter().createComputed(() => {
-    fn();
-    return null;
-  });
-  // The first .get() evaluates and records deps — but we can't introspect
-  // Preact's deps directly. collectSignals is primarily a debug utility and
-  // works best with the TC39 backend. On Preact it returns an empty set.
-  tracker.get();
-  return accessed;
+	const accessed = new Set<import('../adapters/types').SignalState<unknown> | import('../adapters/types').SignalComputed<unknown>>();
+	const tracker = getAdapter().createComputed(() => {
+		fn();
+		return null;
+	});
+	// The first .get() evaluates and records deps — but we can't introspect
+	// Preact's deps directly. collectSignals is primarily a debug utility and
+	// works best with the TC39 backend. On Preact it returns an empty set.
+	tracker.get();
+	return accessed;
 }

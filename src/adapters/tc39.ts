@@ -107,14 +107,21 @@ export const tc39Adapter: SignalAdapter = {
 
 		const watcher = new Signal.subtle.Watcher(() => {
 			if (disposed) return;
-			// NOTE: do NOT call watcher.watch() here — it is forbidden during the
-			// TC39 notification phase (throws "signal read during notification").
-			// Callers (explicitDepsEffect, computedPrevious, computedAsync) each
-			// schedule their own microtask that re-arms the specific signals they
-			// care about. Adding a second re-arming here caused each signal's
-			// liveConsumerNode array to grow by one entry on every change,
-			// producing an unbounded memory leak.
+			// NOTE: watcher.watch() is forbidden inside the notify callback (TC39
+			// notification phase). Re-arm via queueMicrotask so the watcher keeps
+			// firing on subsequent changes. Always unwatch before watch to avoid
+			// growing liveConsumerNode arrays (memory leak prevention).
 			notify();
+			queueMicrotask(() => {
+				if (disposed) return;
+				const sources = Signal.subtle.introspectSources(watcher);
+				for (const s of sources) {
+					try { watcher.unwatch(s as any); } catch { /* ok */ }
+				}
+				for (const s of sources) {
+					try { watcher.watch(s as any); } catch { /* ok */ }
+				}
+			});
 		});
 
 		return {
