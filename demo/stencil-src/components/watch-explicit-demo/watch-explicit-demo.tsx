@@ -10,7 +10,7 @@ export class WatchExplicitDemo extends Mixin(SignalWatcher) {
 
 	// watchEffect with explicit deps — registered with `this` for auto lifecycle management.
 	readonly watchLogger = watchEffect([this.a, this.b], ([av, bv]) => {
-		this.log.set([...this.log(), `${av} × ${bv} = ${av * bv}`].slice(-5));
+		this.log.update(entries => [...entries, `${av} × ${bv} = ${av * bv}`].slice(-5));
 	}, this);
 
 	render() {

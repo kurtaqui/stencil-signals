@@ -13,6 +13,8 @@ export interface SignalState<T> {
 	(): T;
 	/** Write a new value. */
 	set(value: T): void;
+	/** Derive the next value from the current one. Uses an untracked read. */
+	update(fn: (current: T) => T): void;
 	/** Read the current value WITHOUT tracking (untracked read). */
 	peek(): T;
 }

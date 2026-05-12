@@ -19,8 +19,8 @@ export class PreviousDemo extends Mixin(SignalWatcher) {
 					<span style={{ color: '#888' }}>previous: {prev ?? '—'}</span>
 				</div>
 				<div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-					<button onClick={() => count.set(c - 1)}>−</button>
-					<button onClick={() => count.set(c + 1)}>+</button>
+					<button onClick={() => count.update(n => n - 1)}>−</button>
+					<button onClick={() => count.update(n => n + 1)}>+</button>
 					<span style={{ marginLeft: '0.5rem', fontSize: '0.85em', color: '#555' }}>
 						(shares <code>count</code> with counter-demo above)
 					</span>
