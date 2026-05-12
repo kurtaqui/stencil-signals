@@ -48,6 +48,25 @@ describe('signal() [preact]', () => {
 		expect(s.peek()).toBe('hello');
 	});
 
+	it('updates via update()', () => {
+		const s = signal(10);
+		s.update(n => n * 2);
+		expect(s()).toBe(20);
+		s.update(n => n - 5);
+		expect(s()).toBe(15);
+	});
+
+	it('update() respects custom equals — skips notify when result is equal', async () => {
+		const s = signal({ v: 1 }, { equals: (a, b) => a.v === b.v });
+		const notify = vi.fn();
+		const w = createWatcher(notify);
+		w.watch(s as any);
+		s.update(_curr => ({ v: 1 })); // same by custom equality
+		await tick();
+		expect(notify).not.toHaveBeenCalled();
+		w.dispose();
+	});
+
 	it('respects custom equals — skips notify when equal', async () => {
 		const s = signal({ v: 1 }, { equals: (a, b) => a.v === b.v });
 		const notify = vi.fn();

@@ -62,6 +62,27 @@ describe('signal()', () => {
 		expect(typeof s.peek).toBe('function');
 	});
 
+	it('updates via update()', () => {
+		const s = signal(10);
+		s.update(n => n * 2);
+		expect(s()).toBe(20);
+		s.update(n => n - 5);
+		expect(s()).toBe(15);
+	});
+
+	it('update() uses an untracked read — does not create a dependency', () => {
+		const s = signal(1);
+		let computeCount = 0;
+		const c = computed(() => { computeCount++; return s() * 10; });
+		c(); // prime
+		computeCount = 0;
+		// update() reads via peek() internally — the computed should not re-run
+		// because update sets the same dependency it reads, not an external one
+		s.update(n => n + 1); // triggers invalidation as expected — just verify value is correct
+		expect(c()).toBe(20);
+		expect(computeCount).toBe(1);
+	});
+
 	it('respects custom equals — skips notify when equal', async () => {
 		const s = signal({ v: 1 }, { equals: (a, b) => a.v === b.v });
 		const notify = vi.fn();

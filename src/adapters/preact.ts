@@ -61,6 +61,11 @@ export const preactAdapter: SignalAdapter = {
 					if (eq && eq(raw.peek(), newVal)) return;
 					raw.value = newVal;
 				},
+				update: (updater: (current: T) => T) => {
+					const next = updater(raw.peek());
+					if (eq && eq(raw.peek(), next)) return;
+					raw.value = next;
+				},
 				peek: () => raw.peek(),
 			},
 		) as unknown as SignalState<T>;

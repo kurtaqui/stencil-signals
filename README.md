@@ -43,7 +43,7 @@ export const doubled = computed(() => count() * 2);
 export class MyCounter extends SignalWatcher(class {}) {
   render() {
     return (
-      <button onClick={() => count.set(count() + 1)}>
+      <button onClick={() => count.update(n => n + 1)}>
         {count()} (×2: {doubled()})
       </button>
     );
@@ -222,7 +222,7 @@ export class MyCounter extends ReactiveControllerHost {
     return (
       <div>
         <p>{count()} (doubled: {doubled()})</p>
-        <button onClick={() => count.set(count() + 1)}>+1</button>
+        <button onClick={() => count.update(n => n + 1)}>+1</button>
       </div>
     );
   }
@@ -458,6 +458,24 @@ All three paths export the same API surface — `signal`, `computed`, `batch`, `
 | Export | Signature | Description |
 |--------|-----------|-------------|
 | `signal(value, options?)` | `<T>(value: T, options?: SignalOptions<T>) => SignalState<T>` | Writable signal. Accepts an optional `equals` function to skip identical updates. |
+
+`SignalState<T>` exposes three methods:
+
+| Method | Description |
+|--------|-------------|
+| `sig()` | Read the current value (tracked). |
+| `sig.set(value)` | Write a new value directly. |
+| `sig.update(fn)` | Derive the next value from the current one — `fn` receives the current value via an untracked read and returns the new value. Prefer over `sig.set(sig() + 1)` to avoid accidental dependency tracking inside computeds/effects. |
+| `sig.peek()` | Read the current value without tracking. |
+
+`SignalState<T>` exposes three methods:
+
+| Method | Description |
+|--------|-------------|
+| `sig()` | Read the current value (tracked). |
+| `sig.set(value)` | Write a new value directly. |
+| `sig.update(fn)` | Derive the next value from the current one — `fn` receives the current value via an untracked read, returns the new value. Prefer over `sig.set(sig() + 1)` to avoid accidental dependency tracking. |
+| `sig.peek()` | Read the current value without tracking. |
 | `computed(fn, options?)` | `<T>(fn: () => T, options?: SignalOptions<T>) => SignalComputed<T>` | Read-only derived signal. Lazily recomputes when dependencies change. |
 | `batch(fn)` | `<T>(fn: () => T) => T` | Batch multiple signal writes into one update cycle. |
 | `Signal` | namespace | Low-level TC39 `Signal` namespace re-export (`Signal.subtle.untrack`, `Signal.subtle.Watcher`, etc.). |

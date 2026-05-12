@@ -46,6 +46,7 @@ export const tc39Adapter: SignalAdapter = {
 			() => raw.get(),
 			{
 				set: (v: T) => raw.set(v),
+				update: (updater: (current: T) => T) => raw.set(updater(Signal.subtle.untrack(() => raw.get()))),
 				peek: () => Signal.subtle.untrack(() => raw.get()),
 			},
 		) as unknown as SignalState<T>;
