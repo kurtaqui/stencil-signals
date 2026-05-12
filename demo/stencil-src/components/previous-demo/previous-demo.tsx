@@ -10,8 +10,8 @@ export class PreviousDemo extends Mixin(SignalWatcher) {
 	readonly prevCount = computedPrevious(count, this);
 
 	render() {
-		const c = count.get();
-		const prev = this.prevCount.get();
+		const c = count();
+		const prev = this.prevCount();
 		return (
 			<div>
 				<div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.75rem' }}>

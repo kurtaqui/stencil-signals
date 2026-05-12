@@ -3,11 +3,14 @@
  *
  * SignalAdapter implementation backed by @preact/signals-core v1.x.
  *
+ * Signals are callable functions: `counter()` reads the value (tracked),
+ * `counter.set(v)` writes, `counter.peek()` reads without tracking.
+ *
  * Preact signals use `.value` (getter/setter) and `.peek()`. We wrap each
- * signal/computed in a thin object that exposes `.get()` / `.set()` / `.peek()`
+ * signal/computed in a callable function that exposes `.set()` / `.peek()`
  * to match the adapter interface. A module-level WeakMap maps each wrapper
- * back to its raw Preact signal so the watcher can subscribe via Preact's
- * own effect().
+ * function back to its raw Preact signal so the watcher can subscribe via
+ * Preact's own effect(). Functions are objects, so they are valid WeakMap keys.
  *
  * The Watcher is emulated with a combined Preact computed (that reads all
  * watched signals) plus a Preact effect (that fires when the computed changes).
@@ -16,27 +19,28 @@
  */
 
 import {
-  signal as preactSignal,
-  computed as preactComputed,
-  effect as preactEffect,
-  batch as preactBatch,
-  untracked as preactUntracked,
+	signal as preactSignal,
+	computed as preactComputed,
+	effect as preactEffect,
+	batch as preactBatch,
+	untracked as preactUntracked,
 } from '@preact/signals-core';
 import type {
-  ReadonlySignal,
+	ReadonlySignal,
 } from '@preact/signals-core';
 import type {
-  SignalAdapter,
-  SignalState,
-  SignalComputed,
-  SignalOptions,
-  AdapterWatcher,
+	SignalAdapter,
+	SignalState,
+	SignalComputed,
+	SignalOptions,
+	AdapterWatcher,
 } from './types';
 
-// ─── WeakMap: wrapper → raw Preact signal ─────────────────────────────────────
+// ─── WeakMap: wrapper fn → raw Preact signal ─────────────────────────────────
 //
-// Keyed by the wrapper object so the watcher can retrieve the raw signal when
-// watch() / unwatch() is called with a wrapper.
+// Keyed by the wrapper function so the watcher can retrieve the raw signal when
+// watch() / unwatch() is called with a wrapper. Functions are objects so they
+// are valid WeakMap keys.
 
 type RawPreact<T> = ReturnType<typeof preactSignal<T>> | ReadonlySignal<T>;
 const rawMap = new WeakMap<object, RawPreact<unknown>>();
@@ -45,100 +49,104 @@ const rawMap = new WeakMap<object, RawPreact<unknown>>();
 
 export const preactAdapter: SignalAdapter = {
 
-  createState<T>(value: T, options?: SignalOptions<T>): SignalState<T> {
-    const raw = preactSignal<T>(value);
-    const eq = options?.equals;
+	createState<T>(value: T, options?: SignalOptions<T>): SignalState<T> {
+		const raw = preactSignal<T>(value);
+		const eq = options?.equals;
 
-    const wrapped: SignalState<T> = {
-      get: () => raw.value,
-      set: (newVal: T) => {
-        // Apply custom equals if provided — Preact doesn't have native equals support.
-        if (eq && eq(raw.peek(), newVal)) return;
-        raw.value = newVal;
-      },
-      peek: () => raw.peek(),
-    };
-    rawMap.set(wrapped, raw as RawPreact<unknown>);
-    return wrapped;
-  },
+		const wrapped = Object.assign(
+			() => raw.value,
+			{
+				set: (newVal: T) => {
+					// Apply custom equals if provided — Preact doesn't have native equals support.
+					if (eq && eq(raw.peek(), newVal)) return;
+					raw.value = newVal;
+				},
+				peek: () => raw.peek(),
+			},
+		) as unknown as SignalState<T>;
+		rawMap.set(wrapped as unknown as object, raw as RawPreact<unknown>);
+		return wrapped;
+	},
 
-  createComputed<T>(fn: () => T, _options?: SignalOptions<T>): SignalComputed<T> {
-    // Preact computed ignores equals option (always re-evaluates on dep change).
-    const raw = preactComputed<T>(() => fn());
+	createComputed<T>(fn: () => T, _options?: SignalOptions<T>): SignalComputed<T> {
+		// Preact computed ignores equals option (always re-evaluates on dep change).
+		const raw = preactComputed<T>(() => fn());
 
-    const wrapped: SignalComputed<T> = {
-      get: () => raw.value,
-      peek: () => raw.peek(),
-    };
-    rawMap.set(wrapped, raw as RawPreact<unknown>);
-    return wrapped;
-  },
+		const wrapped = Object.assign(
+			() => raw.value,
+			{
+				peek: () => raw.peek(),
+			},
+		) as unknown as SignalComputed<T>;
+		rawMap.set(wrapped as unknown as object, raw as RawPreact<unknown>);
+		return wrapped;
+	},
 
-  createEffect(fn: () => void | (() => void)): () => void {
-    // Preact's effect() handles cleanup returns natively.
-    return preactEffect(fn as () => void);
-  },
+	createEffect(fn: () => void | (() => void)): () => void {
+		// Preact's effect() handles cleanup returns natively.
+		return preactEffect(fn as () => void);
+	},
 
-  untrack<T>(fn: () => T): T {
-    return preactUntracked(fn);
-  },
+	untrack<T>(fn: () => T): T {
+		return preactUntracked(fn);
+	},
 
-  batch<T>(fn: () => T): T {
-    return preactBatch(fn);
-  },
+	batch<T>(fn: () => T): T {
+		return preactBatch(fn);
+	},
 
-  createWatcher(notify: () => void): AdapterWatcher {
-    const rawWatched = new Set<RawPreact<unknown>>();
-    let stopEffect: (() => void) | null = null;
+	createWatcher(notify: () => void): AdapterWatcher {
+		const rawWatched = new Set<RawPreact<unknown>>();
+		let stopEffect: (() => void) | null = null;
 
-    function rearm(): void {
-      stopEffect?.();
-      stopEffect = null;
+		function rearm(): void {
+			stopEffect?.();
+			stopEffect = null;
 
-      if (rawWatched.size === 0) return;
+			if (rawWatched.size === 0) return;
 
-      // Snapshot current watched set — captures deps for this arm cycle.
-      const snapshot = [...rawWatched];
-      let firstRun = true;
+			// Snapshot current watched set — captures deps for this arm cycle.
+			const snapshot = [...rawWatched];
+			let firstRun = true;
 
-      stopEffect = preactEffect(() => {
-        // Reading each raw signal's .value subscribes this effect to it.
-        // `void` discards the value explicitly — the side-effect is the point.
-        for (const raw of snapshot) void ((raw as any).value as unknown);
+			stopEffect = preactEffect(() => {
+				// Reading each raw signal's .value subscribes this effect to it.
+				// `void` discards the value explicitly — the side-effect is the point.
+				for (const raw of snapshot) void ((raw as any).value as unknown);
 
-        if (firstRun) {
-          // Suppress initial synchronous fire — we only want to notify on change.
-          firstRun = false;
-        } else {
-          notify();
-        }
-      });
-    }
+				if (firstRun) {
+					// Suppress initial synchronous fire — we only want to notify on change.
+					firstRun = false;
+				} else {
+					notify();
+				}
+			});
+		}
 
-    return {
-      watch(sig) {
-        const raw = rawMap.get(sig as object);
-        if (!raw) throw new TypeError(
-          '@kurtaqui/stencil-signals: watch() received a signal not created ' +
-          'by the Preact adapter. Do not mix backends.',
-        );
-        if (rawWatched.has(raw)) return;  // already watching — no rearm needed
-        rawWatched.add(raw);
-        rearm();
-      },
+		return {
+			watch(sig) {
+				const raw = rawMap.get(sig as object);
+				if (!raw) throw new TypeError(
+					'@kurtaqui/stencil-signals: watch() received a signal not created ' +
+					'by the Preact adapter. Do not mix backends.',
+				);
+				if (rawWatched.has(raw)) return;  // already watching — no rearm needed
+				rawWatched.add(raw);
+				rearm();
+			},
 
-      unwatch(sig) {
-        const raw = rawMap.get(sig as object);
-        if (!raw || !rawWatched.has(raw)) return;
-        rawWatched.delete(raw);
-        rearm();
-      },
+			unwatch(sig) {
+				const raw = rawMap.get(sig as object);
+				if (!raw || !rawWatched.has(raw)) return;
+				rawWatched.delete(raw);
+				rearm();
+			},
 
-      dispose() {
-        stopEffect?.();
-        stopEffect = null;
-        rawWatched.clear();
-      },
-    };
-  },
+			dispose() {
+				stopEffect?.();
+				stopEffect = null;
+				rawWatched.clear();
+			},
+		};
+	},
 };

@@ -13,7 +13,7 @@
  *     super();
  *     this.addController(new SignalWatcherController(this));
  *   }
- *   render() { return <p>{count.get()}</p>; }
+ *   render() { return <p>{count()}</p>; }
  * }
  * ```
  *

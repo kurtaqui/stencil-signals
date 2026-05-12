@@ -99,15 +99,17 @@ function _computedPreviousWithHost<T>(
 	let inner = _computedPreviousCore<T>(source, initialValue);
 	let isDisposed = false;
 
-	const wrapper = {
-		get(): T | undefined { return inner.get(); },
-		peek(): T | undefined { return inner.peek(); },
-		dispose(): void {
-			if (isDisposed) return;
-			isDisposed = true;
-			inner.dispose();
+	const wrapper = Object.assign(
+		() => inner(),
+		{
+			peek(): T | undefined { return inner.peek(); },
+			dispose(): void {
+				if (isDisposed) return;
+				isDisposed = true;
+				inner.dispose();
+			},
 		},
-	} as DisposableSignal<T | undefined>;
+	) as DisposableSignal<T | undefined>;
 
 	function reinit(): void {
 		if (!isDisposed) return;
@@ -134,13 +136,13 @@ function _computedPreviousCore<T>(
 
 	// Track the last seen value — updated each time the source changes.
 	// Initialised to the current source value so the first change is detected.
-	let lastSeen: T | undefined = adapter.untrack(() => source.get());
+	let lastSeen: T | undefined = adapter.untrack(() => source());
 
 	const watcher = adapter.createWatcher(() => {
 		// Do NOT call watcher.watch() here — in TC39 that throws during the
 		// notification phase. Schedule the update and re-arm there instead.
 		scheduler.schedule(() => {
-			const current = adapter.untrack(() => source.get());
+			const current = adapter.untrack(() => source());
 			if (!Object.is(current, lastSeen)) {
 				// Set prev to the OLD value before updating lastSeen.
 				adapter.untrack(() => prev.set(lastSeen));
@@ -163,7 +165,7 @@ function _computedPreviousCore<T>(
 	// The returned computed simply reads `prev` — it is reactive so any
 	// component/effect that reads it will re-run when prev changes.
 	const output = adapter.createComputed<T | undefined>(
-		() => prev.get(),
+		() => prev(),
 	) as DisposableSignal<T | undefined>;
 
 	(output as any).dispose = () => {

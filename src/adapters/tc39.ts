@@ -4,10 +4,13 @@
  * SignalAdapter implementation backed by the TC39 signals proposal
  * (signal-polyfill v0.2+).
  *
- * TC39 Signal.State / Signal.Computed already expose `.get()` and `.set()`.
- * We augment each instance with a `.peek()` method (untracked read) to
- * satisfy the SignalState / SignalComputed interfaces, then return the raw
- * instance cast to the adapter type — no wrapper object needed.
+ * Signals are callable functions: `counter()` reads the value (tracked),
+ * `counter.set(v)` writes, `counter.peek()` reads without tracking.
+ *
+ * Because Signal.subtle.Watcher.watch() requires actual TC39 signal instances
+ * (not arbitrary functions), a module-level WeakMap maps each wrapper function
+ * back to its raw Signal.State / Signal.Computed so createWatcher can resolve
+ * the raw signal when watch() / unwatch() is called.
  *
  * The Watcher fires synchronously when a watched signal changes. Because
  * `watcher.watch()` is forbidden inside the notify callback (it calls
@@ -25,32 +28,41 @@ import type {
 } from './types';
 import { scheduler } from '../signals/core';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── WeakMap: wrapper fn → raw TC39 signal ────────────────────────────────────
+//
+// Signal.subtle.Watcher.watch() requires actual Signal.State / Signal.Computed
+// instances. We store the mapping here so createWatcher can resolve raw signals.
 
-function addPeek<T>(raw: Signal.State<T> | InstanceType<typeof Signal.Computed<T>>): void {
-	Object.defineProperty(raw, 'peek', {
-		value: () => Signal.subtle.untrack(() => (raw as any).get()),
-		writable: false,
-		configurable: true,
-		enumerable: false,
-	});
-}
+type RawTC39 = Signal.State<any> | InstanceType<typeof Signal.Computed<any>>;
+const rawMap = new WeakMap<Function, RawTC39>();
 
 // ─── Adapter ─────────────────────────────────────────────────────────────────
 
 export const tc39Adapter: SignalAdapter = {
 
 	createState<T>(value: T, options?: SignalOptions<T>): SignalState<T> {
-		// TC39 options shape: { equals?: (a, b) => boolean }
 		const raw = new Signal.State<T>(value, options as any);
-		addPeek(raw);
-		return raw as unknown as SignalState<T>;
+		const fn = Object.assign(
+			() => raw.get(),
+			{
+				set: (v: T) => raw.set(v),
+				peek: () => Signal.subtle.untrack(() => raw.get()),
+			},
+		) as unknown as SignalState<T>;
+		rawMap.set(fn as unknown as Function, raw);
+		return fn;
 	},
 
 	createComputed<T>(fn: () => T, options?: SignalOptions<T>): SignalComputed<T> {
 		const raw = new Signal.Computed<T>(fn, options as any);
-		addPeek(raw);
-		return raw as unknown as SignalComputed<T>;
+		const wrapper = Object.assign(
+			() => raw.get(),
+			{
+				peek: () => Signal.subtle.untrack(() => raw.get()),
+			},
+		) as unknown as SignalComputed<T>;
+		rawMap.set(wrapper as unknown as Function, raw);
+		return wrapper;
 	},
 
 	createEffect(fn: () => void | (() => void)): () => void {
@@ -126,10 +138,12 @@ export const tc39Adapter: SignalAdapter = {
 
 		return {
 			watch(sig) {
-				watcher.watch(sig as any);
+				const raw = rawMap.get(sig as unknown as Function) ?? sig as any;
+				watcher.watch(raw);
 			},
 			unwatch(sig) {
-				try { watcher.unwatch(sig as any); } catch { /* ok */ }
+				const raw = rawMap.get(sig as unknown as Function) ?? sig as any;
+				try { watcher.unwatch(raw); } catch { /* ok */ }
 			},
 			dispose() {
 				disposed = true;

@@ -170,11 +170,11 @@ describe('SignalWatcherController', () => {
 
 	it('signal change calls requestUpdate after render', async () => {
 		const s = signal(0);
-		(host as any).render = () => s.get(); // read signal in render
+		(host as any).render = () => s(); // read signal in render
 
 		// Re-create controller with new render.
 		const fresh = new ReactiveControllerHost();
-		(fresh as any).render = () => s.get();
+		(fresh as any).render = () => s();
 		fresh.requestUpdate = vi.fn();
 		const ctrl = new SignalWatcherController(fresh as any);
 		fresh.addController(ctrl);
@@ -194,7 +194,7 @@ describe('SignalWatcherController', () => {
 	it('hostDisconnected disposes the tracking effect', async () => {
 		const s = signal(0);
 		const fresh = new ReactiveControllerHost();
-		(fresh as any).render = () => s.get();
+		(fresh as any).render = () => s();
 		fresh.requestUpdate = vi.fn();
 		const ctrl = new SignalWatcherController(fresh as any);
 		fresh.addController(ctrl);
@@ -213,7 +213,7 @@ describe('SignalWatcherController', () => {
 	it('DOM-move guard: disconnect + reconnect in same microtask keeps effect alive', async () => {
 		const s = signal(0);
 		const fresh = new ReactiveControllerHost();
-		(fresh as any).render = () => s.get();
+		(fresh as any).render = () => s();
 		fresh.requestUpdate = vi.fn();
 		const ctrl = new SignalWatcherController(fresh as any);
 		fresh.addController(ctrl);

@@ -13,14 +13,14 @@ export class AsyncDemo extends Mixin(SignalWatcher) {
 	// computedAsync registers with `this` — auto-disposed on disconnect,
 	// automatically reinited (re-fetches) on reconnect.
 	readonly user = computedAsync<User>(async (abortSignal) => {
-		const res = await fetch(`https://jsonplaceholder.typicode.com/users/${userId.get()}`, { signal: abortSignal });
+		const res = await fetch(`https://jsonplaceholder.typicode.com/users/${userId()}`, { signal: abortSignal });
 		if (!res.ok) throw new Error(`HTTP ${res.status}`);
 		return res.json() as Promise<User>;
 	}, this);
 
 	render() {
-		const result: AsyncResult<User> = this.user?.get() ?? { status: 'pending', value: undefined };
-		const uid = userId.get();
+		const result: AsyncResult<User> = this.user() ?? { status: 'pending', value: undefined };
+		const uid = userId();
 
 		let content: unknown;
 		if (isPending(result)) {
