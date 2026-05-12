@@ -17,14 +17,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./tc39": {
-      "types": "./dist/tc39.d.ts",
-      "import": "./dist/tc39.js"
-    },
-    "./preact": {
-      "types": "./dist/preact.d.ts",
-      "import": "./dist/preact.js"
     }
   },
   "files": [

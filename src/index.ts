@@ -1,14 +1,9 @@
 /**
- * @kurtaqui/stencil-signals — default entry point (auto-detecting)
+ * @kurtaqui/stencil-signals — entry point
  *
- * Import from "@kurtaqui/stencil-signals" to get automatic backend detection:
- * the library activates TC39 (signal-polyfill) if it is installed, otherwise
+ * Automatically activates TC39 (signal-polyfill) if it is installed, otherwise
  * falls back to Preact (@preact/signals-core). Install exactly one as a peer
  * dependency; having both installed makes TC39 win.
- *
- * To pin a backend explicitly, use a sub-path import instead:
- *   "@kurtaqui/stencil-signals/tc39"    — always TC39 + exposes raw Signal ns
- *   "@kurtaqui/stencil-signals/preact"  — always Preact
  *
  * Public API surface:
  *
@@ -38,29 +33,28 @@
  *  createStore(init)           Wraps a plain object in signals; returns a reactive Proxy
  */
 
-// ─── Auto-detect and activate adapter ────────────────────────────────────────
-// Top-level await is valid here because the package is pure ESM ("type":"module").
-// The module is fully evaluated (adapter set) before any consumer code runs.
+// ─── Activate TC39 adapter ────────────────────────────────────────────────────
 import { _setAdapter } from './adapters/active';
-import { detectAdapter } from './adapters/detect';
-_setAdapter(await detectAdapter());
+import { tc39Adapter } from './adapters/tc39';
+
+_setAdapter(tc39Adapter);
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 export {
-  signal,
-  computed,
-  batch,
-  scheduler,
-  createWatcher,
-  collectSignals,
+	signal,
+	computed,
+	batch,
+	scheduler,
+	createWatcher,
+	collectSignals,
 } from './signals/core';
 
 export type {
-  SignalState,
-  SignalComputed,
-  SignalOptions,
-  ComputedOptions,
-  AdapterWatcher,
+	SignalState,
+	SignalComputed,
+	SignalOptions,
+	ComputedOptions,
+	AdapterWatcher,
 } from './adapters/types';
 
 // ─── Component integration ────────────────────────────────────────────────────
@@ -78,12 +72,13 @@ export type { CleanupFn, WatchEffectOptions } from './utils/watch-effect';
 export { computedPrevious } from './utils/computed-previous';
 export { computedAsync, isPending, isResolved, isError } from './utils/computed-async';
 export type {
-  AsyncResult,
-  AsyncPending,
-  AsyncResolved,
-  AsyncError,
-  AsyncStatus,
-  ComputedAsyncOptions,
+	DisposableSignal,
+	AsyncResult,
+	AsyncPending,
+	AsyncResolved,
+	AsyncError,
+	AsyncStatus,
+	ComputedAsyncOptions,
 } from './utils/computed-async';
 
 // ─── Store helpers ────────────────────────────────────────────────────────────

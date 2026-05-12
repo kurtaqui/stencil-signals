@@ -1,4 +1,4 @@
-import { signal, computed, computedPrevious } from '@kurtaqui/stencil-signals/tc39';
+import { signal, computed, computedPrevious } from '@kurtaqui/stencil-signals';
 
 export const count = signal(0);
 export const step = signal(1);

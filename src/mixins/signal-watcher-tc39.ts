@@ -124,14 +124,54 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 		private __watcher: InstanceType<typeof Signal.subtle.Watcher> | null = null;
 		/** Guard: suppress forceUpdate calls before the element is connected. */
 		private __connected = false;
+		/** Guard: tracking render wrapper installed once per instance. */
+		private __renderInstalled = false;
 
 		connectedCallback(): void {
 			this.__connected = true;
+
+			if (!this.__renderInstalled) {
+				// ── Install tracking render wrapper (first connection only) ──────────
+				//
+				// The mixin's own `render()` sits *below* the component's `render()`
+				// in the prototype chain, so Stencil always calls the component's
+				// render directly and the mixin render is never reached.
+				//
+				// Fix: at this point `this.render` resolves to the component's JSX
+				// render (e.g. CounterDemo.prototype.render) via prototype lookup.
+				// We capture it and shadow it with an instance own-property that
+				// also sets up the Signal.subtle.Watcher on every render.
+				this.__renderInstalled = true;
+				const jsxRender = (this as any).render as () => unknown;
+				// eslint-disable-next-line @typescript-eslint/no-this-alias
+				const self = this;
+				(this as any).render = function (): unknown {
+					return (self as any).__trackedRender(jsxRender);
+				};
+			} else if (this.__watcher) {
+				// DOM move (disconnect + re-append in the same task): keep the
+				// existing watcher alive — just update its connected flag.
+				const entry = componentForWatcher.get(this.__watcher);
+				if (entry) entry.connected = true;
+			} else {
+				// True disconnect followed by reconnect: the watcher was disposed.
+				// Force a re-render so signal subscriptions are re-established.
+				scheduler.schedule(() => {
+					if (this.__connected) forceUpdate(this as any);
+				});
+			}
+
 			super.connectedCallback?.();
 		}
 
 		disconnectedCallback(): void {
 			this.__connected = false;
+			// Keep the WeakMap entry's connected flag current so a pending notify
+			// callback doesn't schedule a forceUpdate after disconnect.
+			if (this.__watcher) {
+				const entry = componentForWatcher.get(this.__watcher);
+				if (entry) entry.connected = false;
+			}
 			// Use queueMicrotask so DOM moves (remove + re-append in the same task,
 			// as `repeat()` does) don't prematurely dispose the watcher.
 			queueMicrotask(() => {
@@ -142,23 +182,25 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 			super.disconnectedCallback?.();
 		}
 
-		render(): unknown {
+		/** Sets up a Signal.Watcher around the component's JSX render. */
+		private __trackedRender(jsxRender: () => unknown): unknown {
 			// Tear down the previous watcher so deps are always re-collected fresh.
 			this.__disposeWatcher();
 			const newlyWatched = new Set<object>();
 
 			// Regular `function()` so `this` inside = the Watcher, not the component.
 			// The component is looked up via componentForWatcher (WeakMap) — no
-			// `self` alias needed here.
+			// strong reference from watcher → component.
 			const watcher = new Signal.subtle.Watcher(function (
 				this: InstanceType<typeof Signal.subtle.Watcher>,
 			) {
 				const entry = componentForWatcher.get(this);
 				if (entry === undefined) return; // component was GC'd
-				// Re-arm pending signals to keep receiving notifications.
-				for (const s of this.getPending()) {
-					this.watch(s as any);
-				}
+				// NOTE: Do NOT call this.watch() here. The TC39 spec forbids
+				// calling watch() during the notification phase — it triggers
+				// producerAccessed and throws. Since __trackedRender disposes
+				// and recreates this Watcher on every render, re-arming is
+				// unnecessary: the new Watcher re-subscribes from scratch.
 				if (entry.connected) {
 					scheduler.schedule(() => forceUpdate(entry.self as any));
 				}
@@ -171,10 +213,10 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 			});
 			watcherFinalizationRegistry.register(this, watcher);
 
-			// Wrap super.render() in a Computed so every signal.get() is tracked.
+			// Wrap jsxRender in a Computed so every signal.get() call is tracked.
 			let renderResult: unknown;
 			const tracker = new Signal.Computed(() => {
-				renderResult = super.render?.();
+				renderResult = jsxRender.call(this);
 				return renderResult;
 			});
 
@@ -187,8 +229,7 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 
 			this.__watchedSignals = newlyWatched;
 
-			// Keep the WeakMap entry's `connected` flag in sync (it may have changed
-			// between construction and first render in edge cases).
+			// Keep the WeakMap entry's `connected` flag in sync.
 			const entry = componentForWatcher.get(watcher);
 			if (entry) entry.connected = this.__connected;
 
@@ -225,9 +266,8 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 				this: InstanceType<typeof Signal.subtle.Watcher>,
 			) {
 				if (disposed) return;
-				for (const s of this.getPending()) {
-					this.watch(s as any);
-				}
+				// Do NOT call watch() here — forbidden during the notification phase.
+				// Re-arming is done inside the scheduled microtask below.
 				scheduler.schedule(() => {
 					if (!disposed) {
 						effectWatcher.unwatch(effectSignal);

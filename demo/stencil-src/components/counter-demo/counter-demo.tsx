@@ -1,5 +1,5 @@
 import { Component, Mixin, h } from '@stencil/core';
-import { SignalWatcher } from '@kurtaqui/stencil-signals/tc39';
+import { SignalWatcher } from '@kurtaqui/stencil-signals';
 import { count, step, doubled } from '../../store';
 
 @Component({ tag: 'counter-demo', shadow: false })

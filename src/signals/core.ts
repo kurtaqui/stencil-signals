@@ -69,6 +69,25 @@ export function batch<T>(fn: () => T): T {
   return getAdapter().batch(fn);
 }
 
+// ─── Active owner (effect scope) ────────────────────────────────────────────
+//
+// When non-null, any watcher-based utility (watchEffect, computedAsync,
+// computedPrevious) will push its dispose/cleanup function into this list.
+// `SignalWatcher` activates the owner during `connectedCallback` so all
+// watchers created there are automatically disposed on `disconnectedCallback`.
+//
+let _activeOwner: Array<() => void> | null = null;
+
+/** @internal — used by SignalWatcher to set the active owner scope. */
+export function setActiveOwner(list: Array<() => void> | null): void {
+  _activeOwner = list;
+}
+
+/** @internal — used by watcher utilities to auto-register with the active owner. */
+export function getActiveOwner(): Array<() => void> | null {
+  return _activeOwner;
+}
+
 // ─── createWatcher() ──────────────────────────────────────────────────────────
 
 /**

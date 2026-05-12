@@ -42,8 +42,9 @@
  */
 
 import { getAdapter } from '../adapters/active';
-import { scheduler } from '../signals/core';
+import { scheduler, getActiveOwner } from '../signals/core';
 import type { SignalState, SignalComputed } from '../adapters/types';
+import type { DisposableSignal } from './computed-async';
 
 type AnyReadableSignal<T> = SignalState<T> | SignalComputed<T>;
 
@@ -54,41 +55,58 @@ type AnyReadableSignal<T> = SignalState<T> | SignalComputed<T>;
  * @param initialValue  Value returned before the first change. Defaults to `undefined`.
  */
 export function computedPrevious<T>(
-  source: AnyReadableSignal<T>,
-  initialValue?: T,
-): SignalComputed<T | undefined> {
-  const adapter = getAdapter();
+	source: AnyReadableSignal<T>,
+	initialValue?: T,
+): DisposableSignal<T | undefined> {
+	const adapter = getAdapter();
 
-  // We store previous in a plain signal state so the computed can read it
-  // without creating a circular dependency.
-  const prev = adapter.createState<T | undefined>(initialValue);
+	// We store previous in a plain signal state so the computed can read it
+	// without creating a circular dependency.
+	const prev = adapter.createState<T | undefined>(initialValue);
 
-  // Track the last seen value — updated each time the source changes.
-  // Initialised to the current source value so the first change is detected.
-  let lastSeen: T | undefined = adapter.untrack(() => source.get());
+	// Track the last seen value — updated each time the source changes.
+	// Initialised to the current source value so the first change is detected.
+	let lastSeen: T | undefined = adapter.untrack(() => source.get());
 
-  const watcher = adapter.createWatcher(() => {
-    // Do NOT call watcher.watch() here — in TC39 that throws during the
-    // notification phase. Schedule the update and re-arm there instead.
-    scheduler.schedule(() => {
-      const current = adapter.untrack(() => source.get());
-      if (!Object.is(current, lastSeen)) {
-        // Set prev to the OLD value before updating lastSeen.
-        adapter.untrack(() => prev.set(lastSeen));
-        lastSeen = current;
-      }
-      // Re-arm for the next change (safe here — outside notification phase).
-      try {
-        watcher.watch(source);
-      } catch {
-        /* already disposed */
-      }
-    });
-  });
+	const watcher = adapter.createWatcher(() => {
+		// Do NOT call watcher.watch() here — in TC39 that throws during the
+		// notification phase. Schedule the update and re-arm there instead.
+		scheduler.schedule(() => {
+			const current = adapter.untrack(() => source.get());
+			if (!Object.is(current, lastSeen)) {
+				// Set prev to the OLD value before updating lastSeen.
+				adapter.untrack(() => prev.set(lastSeen));
+				lastSeen = current;
+			}
+			// Re-arm for the next change (safe here — outside notification phase).
+			// Unwatch before re-watching to prevent duplicate entries in TC39's
+			// liveConsumerNode array (which would grow unboundedly, causing a leak).
+			try {
+				watcher.unwatch(source);
+				watcher.watch(source);
+			} catch {
+				/* already disposed */
+			}
+		});
+	});
 
-  watcher.watch(source);
+	watcher.watch(source);
 
-  // The returned computed simply reads `prev` — it is reactive so any
-  // component/effect that reads it will re-run when prev changes.
-  return adapter.createComputed<T | undefined>(() => prev.get());
+	// The returned computed simply reads `prev` — it is reactive so any
+	// component/effect that reads it will re-run when prev changes.
+	const output = adapter.createComputed<T | undefined>(
+		() => prev.get(),
+	) as DisposableSignal<T | undefined>;
+
+	(output as any).dispose = () => {
+		try { watcher.unwatch(source); } catch { /* ok */ }
+		watcher.dispose();
+		console.debug('[computedPrevious] disposed');
+	};
+
+	// Auto-register with the active owner scope so this computedPrevious is
+	// automatically disposed when the component disconnects from the DOM.
+	getActiveOwner()?.push((output as any).dispose);
+
+	return output;
 }

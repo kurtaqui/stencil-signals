@@ -17,122 +17,121 @@
 
 import { Signal } from 'signal-polyfill';
 import type {
-  SignalAdapter,
-  SignalState,
-  SignalComputed,
-  SignalOptions,
-  AdapterWatcher,
+	SignalAdapter,
+	SignalState,
+	SignalComputed,
+	SignalOptions,
+	AdapterWatcher,
 } from './types';
 import { scheduler } from '../signals/core';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function addPeek<T>(raw: Signal.State<T> | InstanceType<typeof Signal.Computed<T>>): void {
-  Object.defineProperty(raw, 'peek', {
-    value: () => Signal.subtle.untrack(() => (raw as any).get()),
-    writable: false,
-    configurable: true,
-    enumerable: false,
-  });
+	Object.defineProperty(raw, 'peek', {
+		value: () => Signal.subtle.untrack(() => (raw as any).get()),
+		writable: false,
+		configurable: true,
+		enumerable: false,
+	});
 }
 
 // ─── Adapter ─────────────────────────────────────────────────────────────────
 
 export const tc39Adapter: SignalAdapter = {
 
-  createState<T>(value: T, options?: SignalOptions<T>): SignalState<T> {
-    // TC39 options shape: { equals?: (a, b) => boolean }
-    const raw = new Signal.State<T>(value, options as any);
-    addPeek(raw);
-    return raw as unknown as SignalState<T>;
-  },
+	createState<T>(value: T, options?: SignalOptions<T>): SignalState<T> {
+		// TC39 options shape: { equals?: (a, b) => boolean }
+		const raw = new Signal.State<T>(value, options as any);
+		addPeek(raw);
+		return raw as unknown as SignalState<T>;
+	},
 
-  createComputed<T>(fn: () => T, options?: SignalOptions<T>): SignalComputed<T> {
-    const raw = new Signal.Computed<T>(fn, options as any);
-    addPeek(raw);
-    return raw as unknown as SignalComputed<T>;
-  },
+	createComputed<T>(fn: () => T, options?: SignalOptions<T>): SignalComputed<T> {
+		const raw = new Signal.Computed<T>(fn, options as any);
+		addPeek(raw);
+		return raw as unknown as SignalComputed<T>;
+	},
 
-  createEffect(fn: () => void | (() => void)): () => void {
-    let userCleanup: CleanupFn | undefined;
-    let disposed = false;
-    let capturedCleanup: CleanupFn | undefined;
+	createEffect(fn: () => void | (() => void)): () => void {
+		let userCleanup: CleanupFn | undefined;
+		let disposed = false;
+		let capturedCleanup: CleanupFn | undefined;
 
-    // Wrap fn in a Computed so every signal.get() inside fn is tracked.
-    const tracker = new Signal.Computed<null>(() => {
-      const ret = fn();
-      capturedCleanup = typeof ret === 'function' ? ret : undefined;
-      return null;
-    });
+		// Wrap fn in a Computed so every signal.get() inside fn is tracked.
+		const tracker = new Signal.Computed<null>(() => {
+			const ret = fn();
+			capturedCleanup = typeof ret === 'function' ? ret : undefined;
+			return null;
+		});
 
-    const watcher = new Signal.subtle.Watcher(() => {
-      if (disposed) return;
-      scheduler.schedule(run);
-    });
+		const watcher = new Signal.subtle.Watcher(() => {
+			if (disposed) return;
+			scheduler.schedule(run);
+		});
 
-    function run() {
-      if (disposed) return;
-      userCleanup?.();
-      userCleanup = undefined;
-      watcher.unwatch(tracker);
-      capturedCleanup = undefined;
-      tracker.get();
-      userCleanup = capturedCleanup;
-      watcher.watch(tracker);
-    }
+		function run() {
+			if (disposed) return;
+			userCleanup?.();
+			userCleanup = undefined;
+			watcher.unwatch(tracker);
+			capturedCleanup = undefined;
+			tracker.get();
+			userCleanup = capturedCleanup;
+			watcher.watch(tracker);
+		}
 
-    capturedCleanup = undefined;
-    tracker.get();
-    userCleanup = capturedCleanup;
-    watcher.watch(tracker);
+		capturedCleanup = undefined;
+		tracker.get();
+		userCleanup = capturedCleanup;
+		watcher.watch(tracker);
 
-    return () => {
-      disposed = true;
-      userCleanup?.();
-      try { watcher.unwatch(tracker); } catch { /* ok */ }
-    };
-  },
+		return () => {
+			disposed = true;
+			userCleanup?.();
+			try { watcher.unwatch(tracker); } catch { /* ok */ }
+		};
+	},
 
-  untrack<T>(fn: () => T): T {
-    return Signal.subtle.untrack(fn);
-  },
+	untrack<T>(fn: () => T): T {
+		return Signal.subtle.untrack(fn);
+	},
 
-  batch<T>(fn: () => T): T {
-    // TC39 has no explicit batch; updates coalesce via the microtask scheduler.
-    return fn();
-  },
+	batch<T>(fn: () => T): T {
+		// TC39 has no explicit batch; updates coalesce via the microtask scheduler.
+		return fn();
+	},
 
-  createWatcher(notify: () => void): AdapterWatcher {
-    let disposed = false;
+	createWatcher(notify: () => void): AdapterWatcher {
+		let disposed = false;
 
-    const watcher = new Signal.subtle.Watcher(() => {
-      if (disposed) return;
-      notify();
-      // Re-arm outside the notification phase — watcher.watch() is forbidden
-      // inside notify (producerAccessed throws when inNotificationPhase = true).
-      queueMicrotask(() => {
-        if (disposed) return;
-        for (const s of Signal.subtle.introspectSources(watcher)) {
-          try { watcher.watch(s as any); } catch { /* ok */ }
-        }
-      });
-    });
+		const watcher = new Signal.subtle.Watcher(() => {
+			if (disposed) return;
+			// NOTE: do NOT call watcher.watch() here — it is forbidden during the
+			// TC39 notification phase (throws "signal read during notification").
+			// Callers (explicitDepsEffect, computedPrevious, computedAsync) each
+			// schedule their own microtask that re-arms the specific signals they
+			// care about. Adding a second re-arming here caused each signal's
+			// liveConsumerNode array to grow by one entry on every change,
+			// producing an unbounded memory leak.
+			notify();
+		});
 
-    return {
-      watch(sig) {
-        watcher.watch(sig as any);
-      },
-      unwatch(sig) {
-        try { watcher.unwatch(sig as any); } catch { /* ok */ }
-      },
-      dispose() {
-        disposed = true;
-        for (const s of Signal.subtle.introspectSources(watcher)) {
-          try { watcher.unwatch(s as any); } catch { /* ok */ }
-        }
-      },
-    };
-  },
+		return {
+			watch(sig) {
+				watcher.watch(sig as any);
+			},
+			unwatch(sig) {
+				try { watcher.unwatch(sig as any); } catch { /* ok */ }
+			},
+			dispose() {
+				disposed = true;
+				for (const s of Signal.subtle.introspectSources(watcher)) {
+					try { watcher.unwatch(s as any); } catch { /* ok */ }
+				}
+			},
+		};
+	},
 };
 
 type CleanupFn = () => void;
