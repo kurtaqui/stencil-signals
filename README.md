@@ -56,8 +56,8 @@ export class MyCounter extends SignalWatcher(class {}) {
 | Triggers re-render | ✅ | ✅ |
 | Shared across components | ❌ | ✅ |
 | Computed/derived values | ❌ | ✅ `computed()` |
-| Auto-tracking side effects | ❌ | ✅ `watchEffect(fn)` |
-| Explicit-dep side effects | ❌ | ✅ `watchEffect(deps, fn)` |
+| Auto-tracking side effects | ❌ | ✅ `effect(fn)` |
+| Explicit-dep side effects | ❌ | ✅ `effect(deps, fn)` |
 | Async derived state | ❌ | ✅ `computedAsync` |
 | Previous value tracking | ❌ | ✅ `computedPrevious` |
 | TC39 standard | ❌ | ✅ |
@@ -67,7 +67,7 @@ export class MyCounter extends SignalWatcher(class {}) {
 - **`SignalWatcher` mixin** — wraps `render()` to auto-track signal dependencies and re-render when they change
 - **`SignalWatcherController`** — composition-pattern alternative to the mixin; extend your own `ReactiveControllerHost` and register the controller in the constructor
 - **`@useSignal` decorator** — bind a signal directly to a class property for ergonomic reads and writes
-- **`watchEffect`** — side effects with auto-tracking or explicit dependencies, with cleanup support
+- **`effect`** — side effects with auto-tracking or explicit dependencies, with cleanup support
 - **`computedAsync`** — async derived signals with `pending`/`resolved`/`error` status and automatic `AbortSignal` cancellation
 - **`computedPrevious`** — derived signal that holds the previous value of another signal
 - **`createStore`** — wrap a plain object in per-property signals via a reactive Proxy
@@ -203,7 +203,7 @@ Then register `SignalWatcherController` in your component:
 
 ```tsx
 import { Component, h } from '@stencil/core';
-import { SignalWatcherController, watchEffect } from '@kurtaqui/stencil-signals';
+import { SignalWatcherController, effect } from '@kurtaqui/stencil-signals';
 import { ReactiveControllerHost } from './reactive-controller';
 import { count, doubled } from './store';
 
@@ -229,7 +229,7 @@ export class MyCounter extends ReactiveControllerHost {
 }
 ```
 
-**Owner scope and auto-disposal:** `SignalWatcherController.hostConnected()` activates a shared owner scope for one microtask. Any `watchEffect`, `computedAsync`, or `computedPrevious` created during that window — including in your `connectedCallback` after `super.connectedCallback()` — registers its dispose function automatically. On unmount, `hostDisconnected()` flushes all registered cleanups in one pass.
+**Owner scope and auto-disposal:** `SignalWatcherController.hostConnected()` activates a shared owner scope for one microtask. Any `effect`, `computedAsync`, or `computedPrevious` created during that window — including in your `connectedCallback` after `super.connectedCallback()` — registers its dispose function automatically. On unmount, `hostDisconnected()` flushes all registered cleanups in one pass.
 
 Alternatively, pass `this` directly to any watcher utility (even from a class property initializer) — they register with the component's `__watcherRegistry` and are auto-disposed on `disconnectedCallback`, then reinited on `connectedCallback`.
 
@@ -270,12 +270,12 @@ export class MyComp extends SignalWatcher(class {}) {
 > [!NOTE]
 > Writing to a property bound to a `computed` signal throws at runtime. Use `@useSignal` only with writable signals.
 
-### `watchEffect`
+### `effect`
 
 **Auto-tracking** — any signal read inside the callback is tracked automatically:
 
 ```ts
-const stop = watchEffect(() => {
+const stop = effect(() => {
   document.title = `Count: ${count()}`;
 });
 
@@ -287,7 +287,7 @@ Inside a `SignalWatcher` component, pass `this` as the last argument — the eff
 ```tsx
 @Component({ tag: 'my-comp', shadow: false })
 export class MyComp extends Mixin(SignalWatcher) {
-   readonly titleWatch = watchEffect(() => {
+   readonly titleWatch = effect(() => {
     document.title = `Count: ${count()}`;
   }, this);
 
@@ -300,7 +300,7 @@ If the callback returns a function, it is called as cleanup before the next re-r
 **Explicit dependencies** — list the signals you care about; values are passed as a typed tuple (no `()` call needed inside `fn`):
 
 ```ts
-const stop = watchEffect(
+const stop = effect(
   [userId, theme],
   ([id, currentTheme], onCleanup) => {
     const controller = new AbortController();
@@ -317,7 +317,7 @@ const stop = watchEffect(
 With `this` as host (options can be omitted when no options are needed):
 
 ```tsx
-private readonly _stop = watchEffect([userId, theme], ([id, t], onCleanup) => {
+private readonly _stop = effect([userId, theme], ([id, t], onCleanup) => {
   const ctrl = new AbortController();
   onCleanup(() => ctrl.abort());
   fetch(`/api/users/${id}?theme=${t}`, { signal: ctrl.signal })
@@ -432,7 +432,7 @@ const store = createStore(
 store.count++;              // calls the underlying signal's set()
 store.theme = 'dark';       // same
 store.isLoggedIn;           // reads the computed signal
-store.$signal('count');     // raw SignalState<number> for interop
+store.$signal('count');     // raw WritableSignal<number> for interop
 store.$reset();             // reset all state keys to initial values
 ```
 
@@ -446,7 +446,7 @@ The adapter (signal backend) is selected by the import path — no runtime confi
 | `@kurtaqui/stencil-signals/tc39` | TC39 (explicit) | `signal-polyfill ^0.2.0` |
 | `@kurtaqui/stencil-signals/preact` | Preact Signals | `@preact/signals-core ^1.0.0` |
 
-All three paths export the same API surface — `signal`, `computed`, `batch`, `SignalWatcher`, `watchEffect`, `createStore`, etc.
+All three paths export the same API surface — `signal`, `computed`, `batch`, `SignalWatcher`, `effect`, `createStore`, etc.
 
 > [!IMPORTANT]
 > Pick one adapter per application. Mixing adapters in the same bundle is not supported.
@@ -457,28 +457,25 @@ All three paths export the same API surface — `signal`, `computed`, `batch`, `
 
 | Export | Signature | Description |
 |--------|-----------|-------------|
-| `signal(value, options?)` | `<T>(value: T, options?: SignalOptions<T>) => SignalState<T>` | Writable signal. Accepts an optional `equals` function to skip identical updates. |
+| `signal(value, options?)` | `<T>(value: T, options?: SignalOptions<T>) => WritableSignal<T>` | Writable signal. Accepts an optional `equals` function to skip identical updates. |
 
-`SignalState<T>` exposes three methods:
+`Signal<T>` — base read-only interface (also returned by `computed()`):
 
 | Method | Description |
 |--------|-------------|
 | `sig()` | Read the current value (tracked). |
+| `sig.get()` | Read the current value (tracked). Alias for calling as a function. |
+| `sig.peek()` | Read the current value without tracking. |
+
+`WritableSignal<T> extends Signal<T>` — adds write methods:
+
+| Method | Description |
+|--------|-------------|
 | `sig.set(value)` | Write a new value directly. |
 | `sig.update(fn)` | Derive the next value from the current one — `fn` receives the current value via an untracked read and returns the new value. Prefer over `sig.set(sig() + 1)` to avoid accidental dependency tracking inside computeds/effects. |
-| `sig.peek()` | Read the current value without tracking. |
-
-`SignalState<T>` exposes three methods:
-
-| Method | Description |
-|--------|-------------|
-| `sig()` | Read the current value (tracked). |
-| `sig.set(value)` | Write a new value directly. |
-| `sig.update(fn)` | Derive the next value from the current one — `fn` receives the current value via an untracked read, returns the new value. Prefer over `sig.set(sig() + 1)` to avoid accidental dependency tracking. |
-| `sig.peek()` | Read the current value without tracking. |
-| `computed(fn, options?)` | `<T>(fn: () => T, options?: SignalOptions<T>) => SignalComputed<T>` | Read-only derived signal. Lazily recomputes when dependencies change. |
+| `sig.asReadonly()` | Return a read-only `Signal<T>` view of this signal. |
+| `computed(fn, options?)` | `<T>(fn: () => T, options?: SignalOptions<T>) => Signal<T>` | Read-only derived signal. Lazily recomputes when dependencies change. |
 | `batch(fn)` | `<T>(fn: () => T) => T` | Batch multiple signal writes into one update cycle. |
-| `Signal` | namespace | Low-level TC39 `Signal` namespace re-export (`Signal.subtle.untrack`, `Signal.subtle.Watcher`, etc.). |
 
 ### Component integration
 
@@ -494,8 +491,8 @@ All three paths export the same API surface — `signal`, `computed`, `batch`, `
 
 | Export | Description |
 |--------|-------------|
-| `watchEffect(fn, host?)` | Auto-tracking effect. Re-runs whenever any signal accessed inside changes. Returns a dispose function. |
-| `watchEffect(deps, fn, options?, host?)` | Explicit-dep effect. `fn` receives signal values as a typed tuple. Supports `{ defer: true }` and `onCleanup`. Pass `host` to opt into auto lifecycle management. |
+| `effect(fn, host?)` | Auto-tracking effect. Re-runs whenever any signal accessed inside changes. Returns a dispose function. |
+| `effect(deps, fn, options?, host?)` | Explicit-dep effect. `fn` receives signal values as a typed tuple. Supports `{ defer: true }` and `onCleanup`. Pass `host` to opt into auto lifecycle management. |
 
 ### Derived signals
 
