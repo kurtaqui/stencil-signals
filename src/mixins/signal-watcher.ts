@@ -60,14 +60,14 @@ export interface WatcherEntry {
 
 /**
  * Interface implemented by SignalWatcher components. Passed as the optional
- * `host` argument to `computedAsync`, `computedPrevious`, and `watchEffect` to
+ * `host` argument to `computedAsync`, `computedPrevious`, and `effect` to
  * enable automatic dispose-on-disconnect / reinit-on-reconnect.
  *
  * @example
  * ```ts
  * readonly user = computedAsync(fn, this);
  * readonly prev = computedPrevious(source, this);
- * watchEffect(fn, this);
+ * effect(fn, this);
  * ```
  */
 export interface WatcherRegistrar {
@@ -110,7 +110,7 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 				entry.reinit();
 			}
 
-			// Activate the owner scope so any watcher utility (watchEffect,
+			// Activate the owner scope so any watcher utility (effect,
 			// computedAsync, computedPrevious) called in this connectedCallback —
 			// before OR after super — auto-registers its dispose fn.
 			// Clear via microtask so ordering relative to super doesn't matter.

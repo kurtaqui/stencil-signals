@@ -60,7 +60,7 @@ export class SignalWatcherController {
 	hostConnected(): void {
 		this.__connected = true;
 
-		// Activate the owner scope so any watcher utility (watchEffect,
+		// Activate the owner scope so any watcher utility (effect,
 		// computedAsync, computedPrevious) called in connectedCallback —
 		// before OR after this controller is notified — auto-registers its
 		// dispose fn and is cleaned up on disconnect.

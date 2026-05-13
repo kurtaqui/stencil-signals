@@ -1,14 +1,14 @@
 import { Component, Mixin, h } from '@stencil/core';
-import { SignalWatcher, signal, watchEffect } from '@kurtaqui/stencil-signals';
+import { SignalWatcher, signal, effect } from '@kurtaqui/stencil-signals';
 
 const name = signal('World');
 const disposed = signal(false);
 
 @Component({ tag: 'watch-effect-demo', shadow: false })
 export class WatchEffectDemo extends Mixin(SignalWatcher) {
-	// watchEffect with host — auto-disposed on disconnect, reinited on reconnect.
+	// effect with host — auto-disposed on disconnect, reinited on reconnect.
 	// Capture the returned stop fn so the "Dispose effect" button can still stop it manually.
-	readonly watchTitleClean = watchEffect(() => {
+	readonly watchTitleClean = effect(() => {
 		disposed.set(false);
 		document.title = `Hello, ${name()}!`;
 	}, this);

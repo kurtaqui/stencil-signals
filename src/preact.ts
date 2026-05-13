@@ -66,7 +66,7 @@ export type { SignalWatcherControllerHost } from './controllers/signal-watcher-c
 export { useSignal } from './directives/use-signal';
 
 // ─── Side effects ─────────────────────────────────────────────────────────────
-export { watchEffect } from './utils/watch-effect';
-export type { CleanupFn, WatchEffectOptions } from './utils/watch-effect';
+export { effect } from './utils/effect';
+export type { CleanupFn, EffectOptions } from './utils/effect';
 
 

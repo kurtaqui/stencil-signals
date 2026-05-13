@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from 'react';
-import { watchEffect } from '../lib';
+import { effect } from '../lib';
 
 export function useSignalValue<T>(sig: { (): T }): T {
 	return useSyncExternalStore(
 		(notify) => {
 			let mounted = false;
-			const stop = watchEffect(() => {
+			const stop = effect(() => {
 				sig();
 				if (mounted) notify();
 			});

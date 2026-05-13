@@ -71,7 +71,7 @@ export function batch<T>(fn: () => T): T {
 
 // ─── Active owner (effect scope) ────────────────────────────────────────────
 //
-// When non-null, any watcher-based utility (watchEffect, computedAsync,
+// When non-null, any watcher-based utility (effect, computedAsync,
 // computedPrevious) will push its dispose/cleanup function into this list.
 // `SignalWatcher` activates the owner during `connectedCallback` so all
 // watchers created there are automatically disposed on `disconnectedCallback`.
