@@ -23,6 +23,8 @@ export interface SignalState<T> {
 export interface SignalComputed<T> {
 	/** Read the computed value (tracked inside computeds / effects). */
 	(): T;
+	/** Read the computed value (tracked inside computeds / effects). Alias for calling the signal as a function. */
+	get(): T;
 	/** Read the computed value WITHOUT tracking. */
 	peek(): T;
 }
@@ -40,7 +42,7 @@ export type ComputedOptions<T> = SignalOptions<T>;
 
 /**
  * Low-level watcher returned by `createWatcher()` and used internally by
- * watchEffect, computedPrevious, and computedAsync.
+ * effect, computedPrevious, and computedAsync.
  *
  * TC39 backend: wraps Signal.subtle.Watcher.
  * Preact backend: emulated via a combined computed() + effect().

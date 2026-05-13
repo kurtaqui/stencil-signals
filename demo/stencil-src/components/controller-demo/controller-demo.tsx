@@ -1,5 +1,5 @@
 import { Component, h } from '@stencil/core';
-import { SignalWatcherController, watchEffect } from '@kurtaqui/stencil-signals';
+import { SignalWatcherController, effect } from '@kurtaqui/stencil-signals';
 import { ReactiveControllerHost } from '../../reactive-controller';
 import { count, step, doubled } from '../../store';
 
@@ -12,15 +12,15 @@ export class ControllerDemo extends ReactiveControllerHost {
 
 	connectedCallback() {
 		super.connectedCallback(); // activates owner scope via SignalWatcherController
-		// watchEffect auto-registers with the owner scope and is disposed on disconnect
-		watchEffect(() => {
-			console.log('[controller-demo] watchEffect running, count =', count());
+		// effect auto-registers with the owner scope and is disposed on disconnect
+		effect(() => {
+			console.log('[controller-demo] effect running, count =', count());
 			document.title = `count: ${count()}`;
 		});
 	}
 
 	disconnectedCallback() {
-		console.log('[controller-demo] disconnected — owner scope will dispose watchEffect');
+		console.log('[controller-demo] disconnected — owner scope will dispose effect');
 		super.disconnectedCallback();
 	}
 

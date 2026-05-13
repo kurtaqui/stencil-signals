@@ -80,6 +80,7 @@ export const preactAdapter: SignalAdapter = {
 		const wrapped = Object.assign(
 			() => raw.value,
 			{
+				get: () => raw.value,
 				peek: () => raw.peek(),
 			},
 		) as unknown as SignalComputed<T>;

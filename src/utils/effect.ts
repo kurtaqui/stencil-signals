@@ -1,18 +1,18 @@
 /**
- * @kurtaqui/stencil-signals — utils/watch-effect.ts
+ * @kurtaqui/stencil-signals — utils/effect.ts
  *
  * Two signatures, one function:
  *
  * ─── Auto-tracking ────────────────────────────────────────────────────────────
  *
- *   watchEffect(fn)
+ *   effect(fn)
  *
  * Runs `fn` immediately, tracks every signal `.get()` called inside it, and
  * re-runs `fn` whenever any of those signals change.
  *
  * ─── Explicit deps ────────────────────────────────────────────────────────────
  *
- *   watchEffect(deps, fn, options?)
+ *   effect(deps, fn, options?)
  *
  * Only re-runs when the signals listed in `deps` change. The callback receives
  * their current values as typed arguments. Signal reads *inside* `fn` that
@@ -40,7 +40,7 @@ type SignalValues<T extends readonly AnySignal[]> = {
 	[K in keyof T]: T[K] extends AnySignal<infer V> ? V : never;
 };
 
-export interface WatchEffectOptions {
+export interface EffectOptions {
 	/**
 	 * When `true`, the effect does NOT run immediately on creation.
 	 * Only fires on first dep change. Applicable to explicit-deps mode only.
@@ -51,16 +51,16 @@ export interface WatchEffectOptions {
 // ─── Overloads ────────────────────────────────────────────────────────────────
 
 /** Auto-tracking: re-runs whenever any signal read inside `fn` changes. */
-export function watchEffect(fn: () => void | CleanupFn, host?: WatcherRegistrar): CleanupFn;
+export function effect(fn: () => void | CleanupFn, host?: WatcherRegistrar): CleanupFn;
 
 /** Explicit-deps: re-runs only when signals in `deps` change. */
-export function watchEffect<const Deps extends readonly AnySignal[]>(
+export function effect<const Deps extends readonly AnySignal[]>(
 	deps: Deps,
 	fn: (values: SignalValues<Deps>, onCleanup: (fn: CleanupFn) => void) => void | CleanupFn,
-	options: WatchEffectOptions,
+	options: EffectOptions,
 	host?: WatcherRegistrar,
 ): CleanupFn;
-export function watchEffect<const Deps extends readonly AnySignal[]>(
+export function effect<const Deps extends readonly AnySignal[]>(
 	deps: Deps,
 	fn: (values: SignalValues<Deps>, onCleanup: (fn: CleanupFn) => void) => void | CleanupFn,
 	host?: WatcherRegistrar,
@@ -68,42 +68,42 @@ export function watchEffect<const Deps extends readonly AnySignal[]>(
 
 // ─── Implementation ───────────────────────────────────────────────────────────
 
-export function watchEffect(
+export function effect(
 	fnOrDeps: (() => void | CleanupFn) | readonly AnySignal[],
 	fnOrHost?: ((values: unknown[], onCleanup: (fn: CleanupFn) => void) => void | CleanupFn) | WatcherRegistrar,
-	optionsOrHost: WatchEffectOptions | WatcherRegistrar = {},
+	optionsOrHost: EffectOptions | WatcherRegistrar = {},
 	maybeHost?: WatcherRegistrar,
 ): CleanupFn {
 	if (typeof fnOrDeps === 'function') {
-		// Auto-tracking overload: watchEffect(fn, host?)
+		// Auto-tracking overload: effect(fn, host?)
 		const fn = fnOrDeps;
 		const host = typeof (fnOrHost as WatcherRegistrar)?.__addWatcher === 'function'
 			? fnOrHost as WatcherRegistrar
 			: undefined;
 		if (host) {
-			return _watchEffectWithHost(() => autoTrackingEffect(fn), host);
+			return _effectWithHost(() => autoTrackingEffect(fn), host);
 		}
 		const stop = autoTrackingEffect(fn);
 		getActiveOwner()?.push(stop);
 		return stop;
 	}
 
-	// Explicit-deps overload: watchEffect(deps, fn, options?, host?)
+	// Explicit-deps overload: effect(deps, fn, options?, host?)
 	const deps = fnOrDeps as readonly AnySignal[];
 	const explicitFn = fnOrHost as (values: unknown[], onCleanup: (fn: CleanupFn) => void) => void | CleanupFn;
 
-	let options: WatchEffectOptions = {};
+	let options: EffectOptions = {};
 	let host: WatcherRegistrar | undefined;
 
 	if (typeof (optionsOrHost as WatcherRegistrar)?.__addWatcher === 'function') {
 		host = optionsOrHost as WatcherRegistrar;
 	} else {
-		options = (optionsOrHost as WatchEffectOptions) ?? {};
+		options = (optionsOrHost as EffectOptions) ?? {};
 		host = maybeHost;
 	}
 
 	if (host) {
-		return _watchEffectWithHost(() => explicitDepsEffect(deps, explicitFn, options), host);
+		return _effectWithHost(() => explicitDepsEffect(deps, explicitFn, options), host);
 	}
 	const stop = explicitDepsEffect(deps, explicitFn, options);
 	getActiveOwner()?.push(stop);
@@ -112,7 +112,7 @@ export function watchEffect(
 
 // ─── Host path ────────────────────────────────────────────────────────────────
 
-function _watchEffectWithHost(
+function _effectWithHost(
 	factory: () => CleanupFn,
 	host: WatcherRegistrar,
 ): CleanupFn {
@@ -151,7 +151,7 @@ function autoTrackingEffect(fn: () => void | CleanupFn): CleanupFn {
 function explicitDepsEffect(
 	deps: readonly AnySignal[],
 	fn: (values: unknown[], onCleanup: (fn: CleanupFn) => void) => void | CleanupFn,
-	options: WatchEffectOptions,
+	options: EffectOptions,
 ): CleanupFn {
 	let userCleanup: void | CleanupFn;
 	let registeredCleanup: CleanupFn | undefined;
@@ -218,6 +218,6 @@ function explicitDepsEffect(
 		disposed = true;
 		runCleanups();
 		watcher.dispose();
-		console.debug('[watchEffect] disposed');
+		console.debug('[effect] disposed');
 	};
 }

@@ -20,8 +20,8 @@
  *
  *  Side effects
  *  ────────────
- *  watchEffect(fn)             Auto-tracking effect; re-runs on any accessed signal change
- *  watchEffect(deps, fn, opts) Explicit-deps effect; re-runs only when listed signals change
+ *  effect(fn)             Auto-tracking effect; re-runs on any accessed signal change
+ *  effect(deps, fn, opts) Explicit-deps effect; re-runs only when listed signals change
  *
  *  Derived / async signals
  *  ───────────────────────
@@ -66,8 +66,8 @@ export type { SignalWatcherControllerHost } from './controllers/signal-watcher-c
 export { useSignal } from './directives/use-signal';
 
 // ─── Side effects ─────────────────────────────────────────────────────────────
-export { watchEffect } from './utils/watch-effect';
-export type { CleanupFn, WatchEffectOptions } from './utils/watch-effect';
+export { effect } from './utils/effect';
+export type { CleanupFn, EffectOptions } from './utils/effect';
 
 // ─── Derived signals ──────────────────────────────────────────────────────────
 export { computedPrevious } from './utils/computed-previous';

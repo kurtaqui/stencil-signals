@@ -59,6 +59,7 @@ export const tc39Adapter: SignalAdapter = {
 		const wrapper = Object.assign(
 			() => raw.get(),
 			{
+				get: () => raw.get(),
 				peek: () => Signal.subtle.untrack(() => raw.get()),
 			},
 		) as unknown as SignalComputed<T>;

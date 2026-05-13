@@ -17,7 +17,7 @@ import {
 	createWatcher,
 } from '../src/preact';
 import { createStore } from '../src/utils/create-store';
-import { watchEffect } from '../src/utils/watch-effect';
+import { effect } from '../src/utils/effect';
 import { computedPrevious } from '../src/utils/computed-previous';
 import { computedAsync, isPending, isResolved, isError } from '../src/utils/computed-async';
 
@@ -206,7 +206,7 @@ describe('createStore() [preact]', () => {
 describe('watchEffect() — auto-tracking [preact]', () => {
 	it('runs immediately — exactly once', () => {
 		const fn = vi.fn();
-		const cleanup = watchEffect(fn);
+		const cleanup = effect(fn);
 		expect(fn).toHaveBeenCalledOnce();
 		cleanup();
 	});
@@ -214,7 +214,7 @@ describe('watchEffect() — auto-tracking [preact]', () => {
 	it('re-runs when accessed signal changes', async () => {
 		const s = signal('a');
 		const fn = vi.fn(() => { s(); });
-		const cleanup = watchEffect(fn);
+		const cleanup = effect(fn);
 		expect(fn).toHaveBeenCalledTimes(1);
 		s.set('b');
 		await tick(); await tick();
@@ -225,7 +225,7 @@ describe('watchEffect() — auto-tracking [preact]', () => {
 	it('calls returned cleanup before re-run', async () => {
 		const s = signal(0);
 		const innerCleanup = vi.fn();
-		const cleanup = watchEffect(() => {
+		const cleanup = effect(() => {
 			s();
 			return innerCleanup;
 		});
@@ -238,7 +238,7 @@ describe('watchEffect() — auto-tracking [preact]', () => {
 	it('does not re-run after cleanup is called', async () => {
 		const s = signal(0);
 		const fn = vi.fn(() => { s(); });
-		const cleanup = watchEffect(fn);
+		const cleanup = effect(fn);
 		cleanup();
 		const callsBefore = fn.mock.calls.length;
 		s.set(99);
@@ -251,7 +251,7 @@ describe('watchEffect() — auto-tracking [preact]', () => {
 		const a = signal(1);
 		const b = signal(10);
 		const fn = vi.fn(() => { toggle() ? b() : a(); });
-		const cleanup = watchEffect(fn);
+		const cleanup = effect(fn);
 
 		// Currently tracking `toggle` and `a`
 		a.set(2);
@@ -277,7 +277,7 @@ describe('watchEffect() — explicit deps [preact]', () => {
 		const a = signal(1);
 		const b = signal('hello');
 		const fn = vi.fn();
-		const cleanup = watchEffect([a, b], fn);
+		const cleanup = effect([a, b], fn);
 		expect(fn).toHaveBeenCalledOnce();
 		expect(fn.mock.calls[0][0]).toEqual([1, 'hello']);
 		cleanup();
@@ -286,7 +286,7 @@ describe('watchEffect() — explicit deps [preact]', () => {
 	it('re-runs when a listed dep changes', async () => {
 		const s = signal(0);
 		const fn = vi.fn();
-		const cleanup = watchEffect([s], fn);
+		const cleanup = effect([s], fn);
 		s.set(5);
 		await tick(); await tick();
 		cleanup();
@@ -300,7 +300,7 @@ describe('watchEffect() — explicit deps [preact]', () => {
 		const fn = vi.fn(([_d]: number[]) => {
 			other();
 		});
-		const cleanup = watchEffect([dep], fn);
+		const cleanup = effect([dep], fn);
 		const callsBefore = fn.mock.calls.length;
 
 		other.set(999); // change signal NOT in deps
@@ -316,7 +316,7 @@ describe('watchEffect() — explicit deps [preact]', () => {
 	it('defers initial run when defer:true', async () => {
 		const s = signal(0);
 		const fn = vi.fn();
-		const cleanup = watchEffect([s], fn, { defer: true });
+		const cleanup = effect([s], fn, { defer: true });
 		expect(fn).not.toHaveBeenCalled(); // should NOT run immediately
 		s.set(1);
 		await tick(); await tick();
@@ -327,7 +327,7 @@ describe('watchEffect() — explicit deps [preact]', () => {
 	it('calls return-value cleanup before re-run', async () => {
 		const s = signal(0);
 		const innerCleanup = vi.fn();
-		const cleanup = watchEffect([s], () => innerCleanup);
+		const cleanup = effect([s], () => innerCleanup);
 		s.set(1);
 		await tick(); await tick();
 		cleanup();
@@ -337,7 +337,7 @@ describe('watchEffect() — explicit deps [preact]', () => {
 	it('calls onCleanup() registered inside fn', async () => {
 		const s = signal(0);
 		const registered = vi.fn();
-		const cleanup = watchEffect([s], (_vals, onCleanup) => {
+		const cleanup = effect([s], (_vals, onCleanup) => {
 			onCleanup(registered);
 		});
 		s.set(1);
@@ -349,7 +349,7 @@ describe('watchEffect() — explicit deps [preact]', () => {
 	it('does not re-run after disposal', async () => {
 		const s = signal(0);
 		const fn = vi.fn();
-		const cleanup = watchEffect([s], fn);
+		const cleanup = effect([s], fn);
 		cleanup();
 		const countBefore = fn.mock.calls.length;
 		s.set(99);
@@ -362,7 +362,7 @@ describe('watchEffect() — explicit deps [preact]', () => {
 		const b = signal(2);
 		const c = signal(3);
 		const fn = vi.fn();
-		const cleanup = watchEffect([a, b, c], fn);
+		const cleanup = effect([a, b, c], fn);
 		b.set(20);
 		await tick(); await tick();
 		expect(fn.mock.calls[fn.mock.calls.length - 1][0]).toEqual([1, 20, 3]);

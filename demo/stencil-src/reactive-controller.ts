@@ -18,7 +18,7 @@
  * ```
  */
 
-import { forceUpdate } from '@stencil/core';
+import { ComponentInterface, forceUpdate } from '@stencil/core';
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ export interface ReactiveController {
  * Base class for Stencil components that want to use the composition pattern.
  * Bridges all Stencil lifecycle hooks to registered `ReactiveController`s.
  */
-export class ReactiveControllerHost {
+export class ReactiveControllerHost implements ComponentInterface {
 	private __controllers = new Set<ReactiveController>();
 
 	addController(controller: ReactiveController): void {
