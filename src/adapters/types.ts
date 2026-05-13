@@ -23,6 +23,8 @@ export interface SignalState<T> {
 export interface SignalComputed<T> {
 	/** Read the computed value (tracked inside computeds / effects). */
 	(): T;
+	/** Read the computed value (tracked inside computeds / effects). Alias for calling the signal as a function. */
+	get(): T;
 	/** Read the computed value WITHOUT tracking. */
 	peek(): T;
 }
