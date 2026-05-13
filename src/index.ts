@@ -49,8 +49,8 @@ export {
 } from './signals/core';
 
 export type {
-	SignalState,
-	SignalComputed,
+	WritableSignal,
+	Signal,
 	SignalOptions,
 	ComputedOptions,
 	AdapterWatcher,

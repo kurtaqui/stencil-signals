@@ -42,7 +42,7 @@
  *   Per-instance bindings require calling `sig()` / `sig.set()` directly.
  */
 
-import type { SignalState, SignalComputed } from '../signals/core';
+import type { WritableSignal, Signal } from '../signals/core';
 
 /**
  * Bind a Signal.State or Signal.Computed to a class property.
@@ -51,7 +51,7 @@ import type { SignalState, SignalComputed } from '../signals/core';
  * - Writes (`this.prop = x`) delegate to `sig.set(x)` for State signals.
  *   Writing to a Computed signal throws a descriptive TypeError.
  */
-export function useSignal<T>(sig: SignalState<T> | SignalComputed<T>): PropertyDecorator {
+export function useSignal<T>(sig: WritableSignal<T> | Signal<T>): PropertyDecorator {
 	return function (_target: object, propertyKey: string | symbol): void {
 		const isWritable = 'set' in sig && typeof (sig as any).set === 'function';
 
@@ -66,7 +66,7 @@ export function useSignal<T>(sig: SignalState<T> | SignalComputed<T>): PropertyD
 						`read-only Signal.Computed. Writes are not allowed.`,
 					);
 				}
-				(sig as SignalState<T>).set(value);
+				(sig as WritableSignal<T>).set(value);
 			},
 			enumerable: true,
 			configurable: true,

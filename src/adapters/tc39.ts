@@ -7,9 +7,9 @@
  * Signals are callable functions: `counter()` reads the value (tracked),
  * `counter.set(v)` writes, `counter.peek()` reads without tracking.
  *
- * Because Signal.subtle.Watcher.watch() requires actual TC39 signal instances
+ * Because TC39Signal.subtle.Watcher.watch() requires actual TC39 signal instances
  * (not arbitrary functions), a module-level WeakMap maps each wrapper function
- * back to its raw Signal.State / Signal.Computed so createWatcher can resolve
+ * back to its raw TC39Signal.State / TC39Signal.Computed so createWatcher can resolve
  * the raw signal when watch() / unwatch() is called.
  *
  * The Watcher fires synchronously when a watched signal changes. Because
@@ -18,11 +18,11 @@
  * re-arming is deferred to a queueMicrotask.
  */
 
-import { Signal } from 'signal-polyfill';
+import { Signal as TC39Signal } from 'signal-polyfill';
 import type {
 	SignalAdapter,
-	SignalState,
-	SignalComputed,
+	WritableSignal,
+	Signal,
 	SignalOptions,
 	AdapterWatcher,
 } from './types';
@@ -30,39 +30,46 @@ import { scheduler } from '../signals/core';
 
 // ─── WeakMap: wrapper fn → raw TC39 signal ────────────────────────────────────
 //
-// Signal.subtle.Watcher.watch() requires actual Signal.State / Signal.Computed
+// TC39Signal.subtle.Watcher.watch() requires actual TC39Signal.State / TC39Signal.Computed
 // instances. We store the mapping here so createWatcher can resolve raw signals.
 
-type RawTC39 = Signal.State<any> | InstanceType<typeof Signal.Computed<any>>;
+type RawTC39 = TC39Signal.State<any> | InstanceType<typeof TC39Signal.Computed<any>>;
 const rawMap = new WeakMap<Function, RawTC39>();
 
 // ─── Adapter ─────────────────────────────────────────────────────────────────
 
 export const tc39Adapter: SignalAdapter = {
 
-	createState<T>(value: T, options?: SignalOptions<T>): SignalState<T> {
-		const raw = new Signal.State<T>(value, options as any);
+	createState<T>(value: T, options?: SignalOptions<T>): WritableSignal<T> {
+		const raw = new TC39Signal.State<T>(value, options as any);
 		const fn = Object.assign(
 			() => raw.get(),
 			{
 				set: (v: T) => raw.set(v),
-				update: (updater: (current: T) => T) => raw.set(updater(Signal.subtle.untrack(() => raw.get()))),
-				peek: () => Signal.subtle.untrack(() => raw.get()),
+				update: (updater: (current: T) => T) => raw.set(updater(TC39Signal.subtle.untrack(() => raw.get()))),
+				peek: () => TC39Signal.subtle.untrack(() => raw.get()),
+				asReadonly: (): Signal<T> => Object.assign(
+					() => raw.get(),
+					{
+						get: () => raw.get(),
+						peek: () => TC39Signal.subtle.untrack(() => raw.get()),
+					},
+				) as unknown as Signal<T>,
 			},
-		) as unknown as SignalState<T>;
+		) as unknown as WritableSignal<T>;
 		rawMap.set(fn as unknown as Function, raw);
 		return fn;
 	},
 
-	createComputed<T>(fn: () => T, options?: SignalOptions<T>): SignalComputed<T> {
-		const raw = new Signal.Computed<T>(fn, options as any);
+	createComputed<T>(fn: () => T, options?: SignalOptions<T>): Signal<T> {
+		const raw = new TC39Signal.Computed<T>(fn, options as any);
 		const wrapper = Object.assign(
 			() => raw.get(),
 			{
 				get: () => raw.get(),
-				peek: () => Signal.subtle.untrack(() => raw.get()),
+				peek: () => TC39Signal.subtle.untrack(() => raw.get()),
 			},
-		) as unknown as SignalComputed<T>;
+		) as unknown as Signal<T>;
 		rawMap.set(wrapper as unknown as Function, raw);
 		return wrapper;
 	},
@@ -73,13 +80,13 @@ export const tc39Adapter: SignalAdapter = {
 		let capturedCleanup: CleanupFn | undefined;
 
 		// Wrap fn in a Computed so every signal.get() inside fn is tracked.
-		const tracker = new Signal.Computed<null>(() => {
+		const tracker = new TC39Signal.Computed<null>(() => {
 			const ret = fn();
 			capturedCleanup = typeof ret === 'function' ? ret : undefined;
 			return null;
 		});
 
-		const watcher = new Signal.subtle.Watcher(() => {
+		const watcher = new TC39Signal.subtle.Watcher(() => {
 			if (disposed) return;
 			scheduler.schedule(run);
 		});
@@ -108,7 +115,7 @@ export const tc39Adapter: SignalAdapter = {
 	},
 
 	untrack<T>(fn: () => T): T {
-		return Signal.subtle.untrack(fn);
+		return TC39Signal.subtle.untrack(fn);
 	},
 
 	batch<T>(fn: () => T): T {
@@ -119,7 +126,7 @@ export const tc39Adapter: SignalAdapter = {
 	createWatcher(notify: () => void): AdapterWatcher {
 		let disposed = false;
 
-		const watcher = new Signal.subtle.Watcher(() => {
+		const watcher = new TC39Signal.subtle.Watcher(() => {
 			if (disposed) return;
 			// NOTE: watcher.watch() is forbidden inside the notify callback (TC39
 			// notification phase). Re-arm via queueMicrotask so the watcher keeps
@@ -128,7 +135,7 @@ export const tc39Adapter: SignalAdapter = {
 			notify();
 			queueMicrotask(() => {
 				if (disposed) return;
-				const sources = Signal.subtle.introspectSources(watcher);
+				const sources = TC39Signal.subtle.introspectSources(watcher);
 				for (const s of sources) {
 					try { watcher.unwatch(s as any); } catch { /* ok */ }
 				}
@@ -149,7 +156,7 @@ export const tc39Adapter: SignalAdapter = {
 			},
 			dispose() {
 				disposed = true;
-				for (const s of Signal.subtle.introspectSources(watcher)) {
+				for (const s of TC39Signal.subtle.introspectSources(watcher)) {
 					try { watcher.unwatch(s as any); } catch { /* ok */ }
 				}
 			},

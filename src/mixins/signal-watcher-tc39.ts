@@ -62,7 +62,7 @@
 
 import { forceUpdate } from '@stencil/core';
 import type { MixedInCtor } from '@stencil/core';
-import { Signal } from 'signal-polyfill';
+import { Signal as TC39Signal } from 'signal-polyfill';
 import { scheduler } from '../signals/core';
 
 // ─── Memory management ────────────────────────────────────────────────────────
@@ -79,16 +79,16 @@ type WatcherEntry = {
 };
 
 const componentForWatcher = new WeakMap<
-	InstanceType<typeof Signal.subtle.Watcher>,
+	InstanceType<typeof TC39Signal.subtle.Watcher>,
 	WatcherEntry
 >();
 
 const watcherFinalizationRegistry = new FinalizationRegistry<
-	InstanceType<typeof Signal.subtle.Watcher>
+	InstanceType<typeof TC39Signal.subtle.Watcher>
 >((watcher) => {
 	// Component was GC'd — detach all signals so the watcher itself can be
 	// released (signals hold strong refs to their watchers).
-	for (const sig of Signal.subtle.introspectSources(watcher)) {
+	for (const sig of TC39Signal.subtle.introspectSources(watcher)) {
 		try { watcher.unwatch(sig as any); } catch { /* already unwatched */ }
 	}
 });
@@ -121,7 +121,7 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 		/** Signals watched during the most recent render pass. */
 		private __watchedSignals = new Set<object>();
 		/** Active render-tracking watcher; rebuilt each render, disposed on disconnect. */
-		private __watcher: InstanceType<typeof Signal.subtle.Watcher> | null = null;
+		private __watcher: InstanceType<typeof TC39Signal.subtle.Watcher> | null = null;
 		/** Guard: suppress forceUpdate calls before the element is connected. */
 		private __connected = false;
 		/** Guard: tracking render wrapper installed once per instance. */
@@ -140,7 +140,7 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 				// Fix: at this point `this.render` resolves to the component's JSX
 				// render (e.g. CounterDemo.prototype.render) via prototype lookup.
 				// We capture it and shadow it with an instance own-property that
-				// also sets up the Signal.subtle.Watcher on every render.
+				// also sets up the TC39Signal.subtle.Watcher on every render.
 				this.__renderInstalled = true;
 				const jsxRender = (this as any).render as () => unknown;
 				// eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -191,8 +191,8 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 			// Regular `function()` so `this` inside = the Watcher, not the component.
 			// The component is looked up via componentForWatcher (WeakMap) — no
 			// strong reference from watcher → component.
-			const watcher = new Signal.subtle.Watcher(function (
-				this: InstanceType<typeof Signal.subtle.Watcher>,
+			const watcher = new TC39Signal.subtle.Watcher(function (
+				this: InstanceType<typeof TC39Signal.subtle.Watcher>,
 			) {
 				const entry = componentForWatcher.get(this);
 				if (entry === undefined) return; // component was GC'd
@@ -215,14 +215,14 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 
 			// Wrap jsxRender in a Computed so every signal.get() call is tracked.
 			let renderResult: unknown;
-			const tracker = new Signal.Computed(() => {
+			const tracker = new TC39Signal.Computed(() => {
 				renderResult = jsxRender.call(this);
 				return renderResult;
 			});
 
 			tracker.get();
 
-			for (const dep of Signal.subtle.introspectSources(tracker)) {
+			for (const dep of TC39Signal.subtle.introspectSources(tracker)) {
 				watcher.watch(dep as any);
 				newlyWatched.add(dep);
 			}
@@ -257,13 +257,13 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 		updateEffect(fn: () => void): () => void {
 			let disposed = false;
 
-			const effectSignal = new Signal.Computed<null>(() => {
+			const effectSignal = new TC39Signal.Computed<null>(() => {
 				fn();
 				return null;
 			});
 
-			const effectWatcher = new Signal.subtle.Watcher(function (
-				this: InstanceType<typeof Signal.subtle.Watcher>,
+			const effectWatcher = new TC39Signal.subtle.Watcher(function (
+				this: InstanceType<typeof TC39Signal.subtle.Watcher>,
 			) {
 				if (disposed) return;
 				// Do NOT call watch() here — forbidden during the notification phase.
@@ -271,9 +271,9 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 				scheduler.schedule(() => {
 					if (!disposed) {
 						effectWatcher.unwatch(effectSignal);
-						Signal.subtle.untrack(() => effectSignal.get());
+						TC39Signal.subtle.untrack(() => effectSignal.get());
 						effectWatcher.watch(effectSignal);
-						for (const dep of Signal.subtle.introspectSources(effectSignal)) {
+						for (const dep of TC39Signal.subtle.introspectSources(effectSignal)) {
 							effectWatcher.watch(dep as any);
 						}
 					}
@@ -281,15 +281,15 @@ export function SignalWatcher<TBase extends MixedInCtor<StencilLike>>(
 			});
 
 			// Initial untracked read to arm the watcher without scheduling a render.
-			Signal.subtle.untrack(() => effectSignal.get());
+			TC39Signal.subtle.untrack(() => effectSignal.get());
 			effectWatcher.watch(effectSignal);
-			for (const dep of Signal.subtle.introspectSources(effectSignal)) {
+			for (const dep of TC39Signal.subtle.introspectSources(effectSignal)) {
 				effectWatcher.watch(dep as any);
 			}
 
 			return () => {
 				disposed = true;
-				for (const dep of Signal.subtle.introspectSources(effectSignal)) {
+				for (const dep of TC39Signal.subtle.introspectSources(effectSignal)) {
 					try { effectWatcher.unwatch(dep as any); } catch { /* ok */ }
 				}
 				try { effectWatcher.unwatch(effectSignal); } catch { /* ok */ }
