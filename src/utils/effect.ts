@@ -27,14 +27,14 @@
 
 import { getAdapter } from '../adapters/active';
 import { scheduler, getActiveOwner } from '../signals/core';
-import type { SignalState, SignalComputed } from '../adapters/types';
+import type { WritableSignal, Signal } from '../adapters/types';
 import type { WatcherRegistrar } from '../mixins/signal-watcher';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type CleanupFn = () => void;
 
-type AnySignal<T = unknown> = SignalState<T> | SignalComputed<T>;
+type AnySignal<T = unknown> = WritableSignal<T> | Signal<T>;
 
 type SignalValues<T extends readonly AnySignal[]> = {
 	[K in keyof T]: T[K] extends AnySignal<infer V> ? V : never;

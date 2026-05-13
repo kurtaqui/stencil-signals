@@ -35,21 +35,21 @@
  */
 
 import { getAdapter } from '../adapters/active';
-import type { SignalState, SignalComputed } from '../adapters/types';
+import type { WritableSignal, Signal } from '../adapters/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type StateMap<T extends object> = { [K in keyof T]: SignalState<T[K]> };
-type ComputedValueMap<C extends Record<string, SignalComputed<unknown>>> = {
-	[K in keyof C]: C[K] extends SignalComputed<infer V> ? V : never;
+type StateMap<T extends object> = { [K in keyof T]: WritableSignal<T[K]> };
+type ComputedValueMap<C extends Record<string, Signal<unknown>>> = {
+	[K in keyof C]: C[K] extends Signal<infer V> ? V : never;
 };
 
 export type Store<
 	T extends object,
-	C extends Record<string, SignalComputed<unknown>> = Record<never, never>,
+	C extends Record<string, Signal<unknown>> = Record<never, never>,
 > = T &
 	ComputedValueMap<C> & {
-		$signal<K extends keyof T>(key: K): SignalState<T[K]>;
+		$signal<K extends keyof T>(key: K): WritableSignal<T[K]>;
 		$reset(): void;
 	};
 
@@ -57,7 +57,7 @@ export type Store<
 
 export function createStore<
 	T extends object,
-	C extends Record<string, SignalComputed<unknown>> = Record<never, never>,
+	C extends Record<string, Signal<unknown>> = Record<never, never>,
 >(
 	initialState: T,
 	computedFactory?: (state: T) => C,
@@ -81,8 +81,8 @@ export function createStore<
 			const propStr = String(prop);
 
 			if (propStr === '$signal') {
-				return <K extends keyof T>(key: K): SignalState<T[K]> =>
-					(signals as any)[key] as SignalState<T[K]>;
+				return <K extends keyof T>(key: K): WritableSignal<T[K]> =>
+					(signals as any)[key] as WritableSignal<T[K]>;
 			}
 
 			if (propStr === '$reset') {

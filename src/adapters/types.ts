@@ -7,26 +7,24 @@
 
 // ─── Signal shapes ────────────────────────────────────────────────────────────
 
-/** Writable signal — common interface over TC39 Signal.State and Preact signal(). */
-export interface SignalState<T> {
-	/** Read the current value (tracked inside computeds / effects). */
-	(): T;
-	/** Write a new value. */
-	set(value: T): void;
-	/** Derive the next value from the current one. Uses an untracked read. */
-	update(fn: (current: T) => T): void;
-	/** Read the current value WITHOUT tracking (untracked read). */
-	peek(): T;
-}
-
 /** Read-only derived signal — common interface over TC39 Signal.Computed and Preact computed(). */
-export interface SignalComputed<T> {
+export interface Signal<T> {
 	/** Read the computed value (tracked inside computeds / effects). */
 	(): T;
 	/** Read the computed value (tracked inside computeds / effects). Alias for calling the signal as a function. */
 	get(): T;
 	/** Read the computed value WITHOUT tracking. */
 	peek(): T;
+}
+
+/** Writable signal — common interface over TC39 Signal.State and Preact signal(). */
+export interface WritableSignal<T> extends Signal<T> {
+	/** Write a new value. */
+	set(value: T): void;
+	/** Derive the next value from the current one. Uses an untracked read. */
+	update(fn: (current: T) => T): void;
+	/** Return a read-only view of this signal. */
+	asReadonly(): Signal<T>;
 }
 
 /** Options accepted by signal() — both backends support at least `equals`. */
@@ -49,9 +47,9 @@ export type ComputedOptions<T> = SignalOptions<T>;
  */
 export interface AdapterWatcher {
 	/** Start watching a signal for changes. Idempotent for already-watched signals. */
-	watch(sig: SignalState<unknown> | SignalComputed<unknown>): void;
+	watch(sig: WritableSignal<unknown> | Signal<unknown>): void;
 	/** Stop watching a signal. No-op if not currently watched. */
-	unwatch(sig: SignalState<unknown> | SignalComputed<unknown>): void;
+	unwatch(sig: WritableSignal<unknown> | Signal<unknown>): void;
 	/** Dispose the watcher and stop all watching. */
 	dispose(): void;
 }
@@ -60,10 +58,10 @@ export interface AdapterWatcher {
 
 export interface SignalAdapter {
 	/** Create a writable signal holding an initial value. */
-	createState<T>(value: T, options?: SignalOptions<T>): SignalState<T>;
+	createState<T>(value: T, options?: SignalOptions<T>): WritableSignal<T>;
 
 	/** Create a read-only derived signal whose value is computed by `fn`. */
-	createComputed<T>(fn: () => T, options?: ComputedOptions<T>): SignalComputed<T>;
+	createComputed<T>(fn: () => T, options?: ComputedOptions<T>): Signal<T>;
 
 	/**
 	 * Run `fn` as a reactive effect. `fn` is called immediately and re-runs

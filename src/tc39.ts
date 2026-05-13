@@ -42,7 +42,7 @@ import { tc39Adapter } from './adapters/tc39';
 _setAdapter(tc39Adapter);
 
 // ─── TC39-specific raw namespace ─────────────────────────────────────────────
-export { Signal } from 'signal-polyfill';
+export { Signal as TC39Signal } from 'signal-polyfill';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 export {
@@ -55,8 +55,8 @@ export {
 } from './signals/core';
 
 export type {
-	SignalState,
-	SignalComputed,
+	WritableSignal,
+	Signal,
 	SignalOptions,
 	ComputedOptions,
 	AdapterWatcher,

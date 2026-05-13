@@ -65,7 +65,7 @@
  */
 
 import { getAdapter } from '../adapters/active';
-import type { SignalComputed } from '../adapters/types';
+import type { Signal } from '../adapters/types';
 import { scheduler, getActiveOwner } from '../signals/core';
 import type { WatcherRegistrar } from '../mixins/signal-watcher';
 
@@ -105,7 +105,7 @@ export interface ComputedAsyncOptions<T> {
 /**
  * A `SignalComputed` that owns an internal watcher and can be manually stopped.
  */
-export interface DisposableSignal<T> extends SignalComputed<T> {
+export interface DisposableSignal<T> extends Signal<T> {
 	/** Stop all internal watchers and cancel any in-flight async operations. */
 	dispose(): void;
 }

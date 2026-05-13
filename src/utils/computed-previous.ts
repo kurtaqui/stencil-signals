@@ -43,11 +43,9 @@
 
 import { getAdapter } from '../adapters/active';
 import { scheduler, getActiveOwner } from '../signals/core';
-import type { SignalState, SignalComputed } from '../adapters/types';
+import type { Signal } from '../adapters/types';
 import type { DisposableSignal } from './computed-async';
 import type { WatcherRegistrar } from '../mixins/signal-watcher';
-
-type AnyReadableSignal<T> = SignalState<T> | SignalComputed<T>;
 
 /**
  * Returns a signal that always holds the previous value of `source`.
@@ -60,16 +58,16 @@ type AnyReadableSignal<T> = SignalState<T> | SignalComputed<T>;
  * @param host         Optional component host for lifecycle management.
  */
 export function computedPrevious<T>(
-	source: AnyReadableSignal<T>,
+	source: Signal<T>,
 	host: WatcherRegistrar,
 ): DisposableSignal<T | undefined>;
 export function computedPrevious<T>(
-	source: AnyReadableSignal<T>,
+	source: Signal<T>,
 	initialValue?: T,
 	host?: WatcherRegistrar,
 ): DisposableSignal<T | undefined>;
 export function computedPrevious<T>(
-	source: AnyReadableSignal<T>,
+	source: Signal<T>,
 	initialValueOrHost?: T | WatcherRegistrar,
 	maybeHost?: WatcherRegistrar,
 ): DisposableSignal<T | undefined> {
@@ -92,7 +90,7 @@ export function computedPrevious<T>(
 // ─── Host path ────────────────────────────────────────────────────────────────
 
 function _computedPreviousWithHost<T>(
-	source: AnyReadableSignal<T>,
+	source: Signal<T>,
 	initialValue: T | undefined,
 	host: WatcherRegistrar,
 ): DisposableSignal<T | undefined> {
@@ -125,7 +123,7 @@ function _computedPreviousWithHost<T>(
 // ─── Core factory (no host) ───────────────────────────────────────────────────
 
 function _computedPreviousCore<T>(
-	source: AnyReadableSignal<T>,
+	source: Signal<T>,
 	initialValue?: T,
 ): DisposableSignal<T | undefined> {
 	const adapter = getAdapter();

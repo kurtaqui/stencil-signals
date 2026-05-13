@@ -30,8 +30,8 @@ import type {
 } from '@preact/signals-core';
 import type {
 	SignalAdapter,
-	SignalState,
-	SignalComputed,
+	WritableSignal,
+	Signal,
 	SignalOptions,
 	AdapterWatcher,
 } from './types';
@@ -49,7 +49,7 @@ const rawMap = new WeakMap<object, RawPreact<unknown>>();
 
 export const preactAdapter: SignalAdapter = {
 
-	createState<T>(value: T, options?: SignalOptions<T>): SignalState<T> {
+	createState<T>(value: T, options?: SignalOptions<T>): WritableSignal<T> {
 		const raw = preactSignal<T>(value);
 		const eq = options?.equals;
 
@@ -67,13 +67,20 @@ export const preactAdapter: SignalAdapter = {
 					raw.value = next;
 				},
 				peek: () => raw.peek(),
+				asReadonly: (): Signal<T> => Object.assign(
+					() => raw.value,
+					{
+						get: () => raw.value,
+						peek: () => raw.peek(),
+					},
+				) as unknown as Signal<T>,
 			},
-		) as unknown as SignalState<T>;
+		) as unknown as WritableSignal<T>;
 		rawMap.set(wrapped as unknown as object, raw as RawPreact<unknown>);
 		return wrapped;
 	},
 
-	createComputed<T>(fn: () => T, _options?: SignalOptions<T>): SignalComputed<T> {
+	createComputed<T>(fn: () => T, _options?: SignalOptions<T>): Signal<T> {
 		// Preact computed ignores equals option (always re-evaluates on dep change).
 		const raw = preactComputed<T>(() => fn());
 
@@ -83,7 +90,7 @@ export const preactAdapter: SignalAdapter = {
 				get: () => raw.value,
 				peek: () => raw.peek(),
 			},
-		) as unknown as SignalComputed<T>;
+		) as unknown as Signal<T>;
 		rawMap.set(wrapped as unknown as object, raw as RawPreact<unknown>);
 		return wrapped;
 	},

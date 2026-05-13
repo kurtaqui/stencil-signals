@@ -1,5 +1,5 @@
 import { Component, Mixin, h } from '@stencil/core';
-import { SignalWatcher, signal, watchEffect } from '@kurtaqui/stencil-signals';
+import { SignalWatcher, signal, effect } from '@kurtaqui/stencil-signals';
 
 @Component({ tag: 'watch-explicit-demo', shadow: false })
 export class WatchExplicitDemo extends Mixin(SignalWatcher) {
@@ -8,8 +8,8 @@ export class WatchExplicitDemo extends Mixin(SignalWatcher) {
 	readonly b = signal(3);
 	readonly log = signal<string[]>([]);
 
-	// watchEffect with explicit deps — registered with `this` for auto lifecycle management.
-	readonly watchLogger = watchEffect([this.a, this.b], ([av, bv]) => {
+	// effect with explicit deps — registered with `this` for auto lifecycle management.
+	readonly watchLogger = effect([this.a, this.b], ([av, bv]) => {
 		this.log.update(entries => [...entries, `${av} × ${bv} = ${av * bv}`].slice(-5));
 	}, this);
 

@@ -11,8 +11,8 @@
 
 import { getAdapter } from '../adapters/active';
 export type {
-	SignalState,
-	SignalComputed,
+	WritableSignal,
+	Signal,
 	SignalOptions,
 	ComputedOptions,
 	AdapterWatcher,
@@ -48,7 +48,7 @@ export const scheduler = {
 export function signal<T>(
 	value: T,
 	options?: import('../adapters/types').SignalOptions<T>,
-): import('../adapters/types').SignalState<T> {
+): import('../adapters/types').WritableSignal<T> {
 	return getAdapter().createState(value, options);
 }
 
@@ -56,7 +56,7 @@ export function signal<T>(
 export function computed<T>(
 	fn: () => T,
 	options?: import('../adapters/types').ComputedOptions<T>,
-): import('../adapters/types').SignalComputed<T> {
+): import('../adapters/types').Signal<T> {
 	return getAdapter().createComputed(fn, options);
 }
 
@@ -112,8 +112,8 @@ export function createWatcher(
  */
 export function collectSignals(
 	fn: () => void,
-): Set<import('../adapters/types').SignalState<unknown> | import('../adapters/types').SignalComputed<unknown>> {
-	const accessed = new Set<import('../adapters/types').SignalState<unknown> | import('../adapters/types').SignalComputed<unknown>>();
+): Set<import('../adapters/types').WritableSignal<unknown> | import('../adapters/types').Signal<unknown>> {
+	const accessed = new Set<import('../adapters/types').WritableSignal<unknown> | import('../adapters/types').Signal<unknown>>();
 	const tracker = getAdapter().createComputed(() => {
 		fn();
 		return null;

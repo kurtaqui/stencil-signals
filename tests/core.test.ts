@@ -5,8 +5,7 @@
  * Run with: npm test
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Signal } from 'signal-polyfill';
+import { describe, it, expect, vi } from 'vitest';
 
 // Import the TC39 entry point first — this sets the TC39 adapter so all
 // utilities that call getAdapter() work correctly in this test file.
